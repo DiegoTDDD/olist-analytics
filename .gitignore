@@ -1,0 +1,10 @@
+.venv/
+data/
+*.duckdb
+__pycache__/
+.ipynb_checkpoints/
+logs/
+olist_dbt/dbt_packages/
+olist_dbt/target/
+olist_dbt/logs/
+*.csv
