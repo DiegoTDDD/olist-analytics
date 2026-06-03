@@ -5,9 +5,18 @@ with orders as (
 reviews as (
     select
         order_id,
-        avg(review_score) as review_score
-    from {{ ref('stg_order_reviews') }}
-    group by order_id
+        review_score
+    from (
+        select
+            order_id,
+            review_score,
+            row_number() over (
+                partition by order_id
+                order by review_creation_date desc
+            ) as rn
+        from {{ ref('stg_order_reviews') }}
+    )
+    where rn = 1
 ),
 
 payments as (
