@@ -51,7 +51,7 @@ The `delay_days` measure (actual delivery date minus the estimated date) is the 
 
 ## Data quality tests
 
-The model is validated with dbt generic tests: key integrity (\`unique\`, \`not_null\` on primary keys), referential integrity (\`relationships\` between \`fct_orders\` and \`dim_customers\`), and domain validation (\`accepted_values\` restricting review scores to 1–5). These tests caught a real aggregation bug — averaging multiple reviews produced fractional scores — which was fixed by selecting the most recent review per order.
+The model is validated with dbt generic tests: key integrity (`unique`, `not_null` on primary keys), referential integrity (`relationships` between `fct_orders` and `dim_customers`), and domain validation (`accepted_values` restricting review scores to 1–5). These tests caught a real aggregation bug — averaging multiple reviews produced fractional scores — which was fixed by selecting the most recent review per order.
 
 ## Tech stack
 
@@ -63,7 +63,7 @@ The model is validated with dbt generic tests: key integrity (\`unique\`, \`not_
 
 ## Project structure
 
-\`\`\`
+```
 olist-analytics/
 ├── load_data.py            # Loads the raw CSVs into DuckDB
 ├── explore.py              # Quick data integrity checks
@@ -75,38 +75,42 @@ olist-analytics/
 │       ├── staging/        # Cleaned source views (stg_*)
 │       └── marts/          # Dimensional model (fct_*, dim_*) and tests
 └── README.md
-\`\`\`
+```
 
 ## How to run
 
 The raw data is not versioned. Download the dataset first.
 
-1. **Get the data** — download the [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) from Kaggle and place the nine CSV files in \`data/raw/\`.
+**1. Get the data** — download the [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) from Kaggle and place the nine CSV files in `data/raw/`.
 
-2. **Set up the environment**
-   \`\`\`bash
-   python -m venv .venv
-   .venv\Scripts\activate          # Windows
-   pip install -r requirements.txt dbt-core dbt-duckdb
-   \`\`\`
+**2. Set up the environment**
 
-3. **Load the data into DuckDB**
-   \`\`\`bash
-   python load_data.py
-   \`\`\`
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt dbt-core dbt-duckdb
+```
 
-4. **Build the dimensional model and run tests**
-   \`\`\`bash
-   cd olist_dbt
-   dbt deps
-   dbt run
-   dbt test
-   \`\`\`
+**3. Load the data into DuckDB**
 
-5. **Launch the dashboard**
-   \`\`\`bash
-   streamlit run dashboard.py
-   \`\`\`
+```bash
+python load_data.py
+```
+
+**4. Build the dimensional model and run tests**
+
+```bash
+cd olist_dbt
+dbt deps
+dbt run
+dbt test
+```
+
+**5. Launch the dashboard**
+
+```bash
+streamlit run dashboard.py
+```
 
 ## Data source
 
