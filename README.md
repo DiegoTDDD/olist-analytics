@@ -4,6 +4,18 @@
 
 An end-to-end analytics engineering project on the Brazilian Olist e-commerce dataset. It builds a dimensional model with dbt and DuckDB, then uses it to answer a concrete business question: **how does late delivery affect customer satisfaction, and where does the damage actually happen?**
 
+Skills demonstrated
+
+• Analytics Engineering
+• Dimensional Modeling
+• Star Schema Design
+• dbt Development & Testing
+• Data Quality Validation
+• Analytical SQL
+• Customer Satisfaction Analytics
+• Data Visualization & Dashboarding
+• Cloud Deployment
+
 ## Key finding
 
 Customer satisfaction does not decline gradually when an order is late — it collapses. A single day past the promised delivery date is enough to drop the average review score from 4.29 to around 3, and once an order is more than a week late, customers give close to the lowest possible rating.
