@@ -4,17 +4,17 @@
 
 An end-to-end analytics engineering project on the Brazilian Olist e-commerce dataset. It builds a dimensional model with dbt and DuckDB, then uses it to answer a concrete business question: **how does late delivery affect customer satisfaction, and where does the damage actually happen?**
 
-Skills demonstrated
+## Skills demonstrated
 
-• Analytics Engineering
-• Dimensional Modeling
-• Star Schema Design
-• dbt Development & Testing
-• Data Quality Validation
-• Analytical SQL
-• Customer Satisfaction Analytics
-• Data Visualization & Dashboarding
-• Cloud Deployment
+- Analytics Engineering
+- Dimensional Modeling
+- Star Schema Design
+- dbt Development & Testing
+- Data Quality Validation
+- Analytical SQL
+- Customer Satisfaction Analytics
+- Data Visualization & Dashboarding
+- Cloud Deployment
 
 ## Key finding
 
