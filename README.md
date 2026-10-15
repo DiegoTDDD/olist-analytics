@@ -111,6 +111,20 @@ python load_data.py
 
 **4. Build the dimensional model and run tests**
 
+dbt needs a connection profile, which is not stored in the repository. Create `~/.dbt/profiles.yml` (on Windows: `C:\Users\<you>\.dbt\profiles.yml`) with:
+
+```yaml
+olist_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../olist.duckdb
+      threads: 1
+```
+
+The path is relative to the `olist_dbt` folder, where the commands below run.
+
 ```bash
 cd olist_dbt
 dbt deps
