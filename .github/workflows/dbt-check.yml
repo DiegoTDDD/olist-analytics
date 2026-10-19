@@ -1,0 +1,48 @@
+name: dbt check
+
+# Runs the dbt project end to end against the committed olist.duckdb file:
+# dbt deps (downloads packages), dbt run (all models), dbt test (all tests).
+on:
+  push:
+    paths:
+      - "olist_dbt/**"
+      - requirements.txt
+      - ".github/workflows/dbt-check.yml"
+  workflow_dispatch:
+
+jobs:
+  dbt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requirements and dbt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt dbt-core dbt-duckdb
+
+      - name: Create the dbt connection profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<'YML'
+          olist_dbt:
+            target: dev
+            outputs:
+              dev:
+                type: duckdb
+                path: ../olist.duckdb
+                threads: 1
+          YML
+
+      - name: dbt deps, run, test
+        working-directory: olist_dbt
+        run: |
+          dbt deps
+          dbt run
+          dbt test
