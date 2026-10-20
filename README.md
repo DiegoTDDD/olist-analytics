@@ -138,6 +138,12 @@ dbt test
 streamlit run dashboard.py
 ```
 
+## Automated checks
+
+- **dbt check** (`dbt-check.yml`) runs `dbt deps`, `dbt run` and `dbt test` end to end against the committed `olist.duckdb` on every change to the dbt project.
+- **Security audit** (`security-audit.yml`) audits every `requirements*.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
+- **App health** (`app-health.yml`) opens the [live app](https://diegotddd-olist-analytics.streamlit.app) in a real browser after each push and once a day (waking it if it was asleep) and fails if the app shows an error.
+
 ## Data source
 
 Brazilian E-Commerce Public Dataset by Olist — ~100,000 real, anonymized orders placed between 2016 and 2018, made publicly available on Kaggle.
