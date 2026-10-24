@@ -6,6 +6,8 @@ on:
   push:
     paths:
       - "olist_dbt/**"
+      - load_data.py
+      - dashboard.py
       - requirements.txt
       - ".github/workflows/dbt-check.yml"
   workflow_dispatch:
@@ -27,6 +29,45 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt dbt-core dbt-duckdb
 
+      - name: "README step 3: python load_data.py rebuilds the raw tables from the CSV files"
+        run: |
+          # The Kaggle download needs a login, so the nine CSV files are recreated, with the original file
+          # names, from the raw tables in the committed olist.duckdb. They include the few rows with quoted
+          # fields (a city name with commas) that once broke the automatic CSV detection.
+          python - <<'PY'
+          import os, duckdb
+          names = {"customers": "olist_customers_dataset.csv", "geolocation": "olist_geolocation_dataset.csv",
+                   "order_items": "olist_order_items_dataset.csv", "order_payments": "olist_order_payments_dataset.csv",
+                   "order_reviews": "olist_order_reviews_dataset.csv", "orders": "olist_orders_dataset.csv",
+                   "products": "olist_products_dataset.csv", "sellers": "olist_sellers_dataset.csv",
+                   "product_category_name_translation": "product_category_name_translation.csv"}
+          con = duckdb.connect("olist.duckdb", read_only=True)
+          os.makedirs("data/raw", exist_ok=True)
+          for table, file in names.items():
+              con.execute(f"COPY {table} TO 'data/raw/{file}' (HEADER, DELIMITER ',')")
+          print("CSV files written:", sorted(os.listdir("data/raw")))
+          PY
+          mv olist.duckdb olist.duckdb.committed
+          python load_data.py
+          python - <<'PY'
+          import duckdb
+          old = duckdb.connect("olist.duckdb.committed", read_only=True)
+          new = duckdb.connect("olist.duckdb", read_only=True)
+          bad = []
+          for (table,) in old.execute("select table_name from information_schema.tables where table_schema='main' and table_type='BASE TABLE'").fetchall():
+              if table not in ("customers", "geolocation", "order_items", "order_payments", "order_reviews", "orders", "products", "sellers", "product_category_name_translation"):
+                  continue
+              a = old.execute(f"select count(*) from {table}").fetchone()[0]
+              b = new.execute(f"select count(*) from {table}").fetchone()[0]
+              cols_a = [(c[0], c[1]) for c in old.execute(f"describe {table}").fetchall()]
+              cols_b = [(c[0], c[1]) for c in new.execute(f"describe {table}").fetchall()]
+              print(f"{table:36} {a:>8} -> {b:>8}  columns and types {'same' if cols_a == cols_b else 'DIFFERENT'}")
+              if a != b or cols_a != cols_b:
+                  bad.append(table)
+          assert not bad, bad
+          PY
+          rm olist.duckdb.committed
+
       - name: Create the dbt connection profile
         run: |
           mkdir -p ~/.dbt
@@ -46,3 +87,14 @@ jobs:
           dbt deps
           dbt run
           dbt test
+
+      - name: "README step 5: the dashboard starts"
+        run: |
+          python -m streamlit run dashboard.py --server.headless true --server.port 8501 > streamlit.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -sf http://127.0.0.1:8501/_stcore/health >/dev/null; then echo "dashboard is up"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::the dashboard did not start"
+          tail -30 streamlit.log
+          exit 1
