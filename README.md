@@ -81,17 +81,23 @@ olist-analytics/
 ├── explore.py              # Quick data integrity checks
 ├── analysis.py             # Delivery vs. satisfaction analysis
 ├── dashboard.py            # Streamlit dashboard
+├── olist.duckdb            # The finished database (raw tables + dbt models), versioned
+├── requirements.txt
 ├── images/                 # Dashboard screenshots
 ├── olist_dbt/
+│   ├── dbt_project.yml
+│   ├── packages.yml        # dbt packages installed by `dbt deps`
+│   ├── .dbtignore          # keeps dbt away from the dashboard copy under models/
 │   └── models/
 │       ├── staging/        # Cleaned source views (stg_*)
 │       └── marts/          # Dimensional model (fct_*, dim_*) and tests
+├── .github/                # CI: dbt check, security audit, app health
 └── README.md
 ```
 
 ## How to run
 
-The raw data is not versioned. Download the dataset first.
+The raw CSV files are not versioned. The repository does ship the finished `olist.duckdb`, so if you only want to rebuild the dbt model or open the dashboard you can skip steps 1 and 3 and start at step 4 or 5.
 
 **1. Get the data** — download the [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) from Kaggle and place the nine CSV files in `data/raw/`.
 
@@ -99,7 +105,9 @@ The raw data is not versioned. Download the dataset first.
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/Scripts/activate        # Windows (Git Bash)
+# .venv\Scripts\Activate.ps1         # Windows (PowerShell)
+# source .venv/bin/activate          # macOS / Linux
 pip install -r requirements.txt dbt-core dbt-duckdb
 ```
 
@@ -140,7 +148,7 @@ streamlit run dashboard.py
 
 ## Automated checks
 
-- **dbt check** (`dbt-check.yml`) runs `dbt deps`, `dbt run` and `dbt test` end to end against the committed `olist.duckdb` on every change to the dbt project.
+- **dbt check** (`dbt-check.yml`) follows the steps above: it recreates the nine CSV files from the committed `olist.duckdb`, rebuilds the raw tables with `load_data.py`, checks they match the committed ones, runs `dbt deps`, `dbt run` and `dbt test`, and starts the dashboard.
 - **Security audit** (`security-audit.yml`) audits every `requirements*.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
 - **App health** (`app-health.yml`) opens the [live app](https://diegotddd-olist-analytics.streamlit.app) in a real browser after each push and once a day (waking it if it was asleep) and fails if the app shows an error.
 

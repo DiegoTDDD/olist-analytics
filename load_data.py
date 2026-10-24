@@ -9,7 +9,9 @@ for filename in os.listdir(raw_dir):
     if filename.endswith(".csv"):
         table_name = filename.replace(".csv", "").replace("olist_", "").replace("_dataset", "")
         path = os.path.join(raw_dir, filename)
-        con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM read_csv_auto('{path}')")
+        # quote='"' is explicit on purpose: the automatic detection samples only the start of the file, where no
+        # field is quoted, and then fails on the few later rows that are (e.g. a city name containing commas).
+        con.execute(f"""CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM read_csv_auto('{path}', quote='"')""")
         print(f"Tabela criada: {table_name}")
 
 print("\nTabelas no banco:")
