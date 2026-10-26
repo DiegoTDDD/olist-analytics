@@ -29,7 +29,42 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt dbt-core dbt-duckdb
 
-      - name: "README step 3: python load_data.py rebuilds the raw tables from the CSV files"
+      - name: "README steps 1 and 3: download the nine CSV files and run python load_data.py"
+        run: |
+          # The Kaggle download needs a login, so the nine files come from a public GitHub copy of the same
+          # dataset, pinned to one commit. The comparison below proves it holds exactly the same rows as
+          # the raw tables in the committed olist.duckdb, so it stands in for the Kaggle download.
+          mirror=https://raw.githubusercontent.com/dapanew/Ecommify_Database_Design/01e7a13821c227e700ac15e464e9b53a0474c507/postgresql/seed_data
+          mkdir -p data/raw
+          for f in olist_customers_dataset.csv olist_geolocation_dataset.csv olist_order_items_dataset.csv \
+                   olist_order_payments_dataset.csv olist_order_reviews_dataset.csv olist_orders_dataset.csv \
+                   olist_products_dataset.csv olist_sellers_dataset.csv product_category_name_translation.csv; do
+            curl -fsSL -o "data/raw/$f" "$mirror/$f"
+          done
+          ls -la data/raw
+          mv olist.duckdb olist.duckdb.committed
+          python load_data.py
+          python - <<'PY'
+          import duckdb
+          new = duckdb.connect("olist.duckdb", read_only=True)
+          new.execute("ATTACH 'olist.duckdb.committed' AS old (READ_ONLY)")
+          bad = []
+          for t in ["customers", "geolocation", "order_items", "order_payments", "order_reviews", "orders",
+                    "products", "product_category_name_translation", "sellers"]:
+              cols = [c[0] for c in new.execute(f"describe {t}").fetchall()]
+              sel = ", ".join(f"cast({c} as varchar) as {c}" for c in cols)
+              n_new = new.execute(f"select count(*) from {t}").fetchone()[0]
+              n_old = new.execute(f"select count(*) from old.{t}").fetchone()[0]
+              only_new = new.execute(f"select count(*) from (select {sel} from {t} except all select {sel} from old.{t})").fetchone()[0]
+              only_old = new.execute(f"select count(*) from (select {sel} from old.{t} except all select {sel} from {t})").fetchone()[0]
+              print(f"{t:36} downloaded={n_new:>8} committed={n_old:>8} only-in-download={only_new} only-in-committed={only_old}")
+              if n_new != n_old or only_new or only_old:
+                  bad.append(t)
+          assert not bad, bad
+          PY
+          rm olist.duckdb.committed
+
+      - name: "README step 3 (second run): the same script on CSV files written without quotes, as in the Kaggle file"
         run: |
           # The Kaggle download needs a login, so the nine CSV files are recreated, with the original file
           # names, from the raw tables in the committed olist.duckdb. They include the few rows with quoted
@@ -47,7 +82,8 @@ jobs:
               con.execute(f"COPY {table} TO 'data/raw/{file}' (HEADER, DELIMITER ',')")
           print("CSV files written:", sorted(os.listdir("data/raw")))
           PY
-          mv olist.duckdb olist.duckdb.committed
+          git show HEAD:olist.duckdb > olist.duckdb.committed
+          rm -f olist.duckdb
           python load_data.py
           python - <<'PY'
           import duckdb
