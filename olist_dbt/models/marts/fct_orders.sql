@@ -12,7 +12,9 @@ reviews as (
             review_score,
             row_number() over (
                 partition by order_id
-                order by review_creation_date desc
+                -- review_creation_date ties for 31 orders whose reviews differ; the extra
+                -- keys make the choice deterministic, so every rebuild gives the same table.
+                order by review_creation_date desc, review_answer_timestamp desc, review_id
             ) as rn
         from {{ ref('stg_order_reviews') }}
     )
