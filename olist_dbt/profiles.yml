@@ -1,0 +1,9 @@
+# dbt reads this file because it sits in the project folder, so no ~/.dbt/profiles.yml is needed.
+# OLIST_DUCKDB overrides the database path (CI and tests point it elsewhere).
+olist_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('OLIST_DUCKDB', '../olist.duckdb') }}"
+      threads: 1

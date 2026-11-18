@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           source .venv/Scripts/activate
-          pip install -r requirements.txt dbt-core dbt-duckdb 2>&1 | tee pip.log
+          pip install -r requirements-dbt.txt 2>&1 | tee pip.log
           if [ "${PIPESTATUS[0]}" -ne 0 ]; then echo "::error::pip install failed: $(tail -6 pip.log | tr '\n' '|' | cut -c1-700)"; exit 1; fi
 
       - name: "Git Bash: the main libraries load"
@@ -69,7 +69,7 @@ jobs:
         shell: pwsh
         run: |
           .venv\Scripts\Activate.ps1
-          pip install -r requirements.txt dbt-core dbt-duckdb 2>&1 | Tee-Object -FilePath pip.log
+          pip install -r requirements-dbt.txt 2>&1 | Tee-Object -FilePath pip.log
           if ($LASTEXITCODE -ne 0) { Write-Host "::error::pip install failed: $((Get-Content pip.log -Tail 6) -join ' | ')"; exit 1 }
 
       - name: "PowerShell: the main libraries load"

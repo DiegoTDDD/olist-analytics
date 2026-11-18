@@ -2,14 +2,55 @@ version: 2
 
 sources:
   - name: olist
+    description: >
+      The nine raw tables of the Brazilian E-Commerce Public Dataset by Olist (Kaggle), loaded as is
+      by load_data.py. A fixed historical snapshot (2016-2018): it is never refreshed, so source
+      freshness checks do not apply (see docs/adr/0004).
     schema: main
     tables:
-      - name: customers
-      - name: geolocation
-      - name: order_items
-      - name: order_payments
-      - name: order_reviews
       - name: orders
+        columns:
+          - name: order_id
+            tests: [unique, not_null]
+          - name: customer_id
+            tests: [not_null]
+          - name: order_purchase_timestamp
+            tests: [not_null]
+      - name: customers
+        columns:
+          - name: customer_id
+            tests: [unique, not_null]
+      - name: order_items
+        columns:
+          - name: order_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'orders')
+                    field: order_id
+      - name: order_payments
+        columns:
+          - name: order_id
+            tests: [not_null]
+      - name: order_reviews
+        columns:
+          - name: review_score
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [1, 2, 3, 4, 5]
       - name: products
+        columns:
+          - name: product_id
+            tests: [unique, not_null]
       - name: sellers
+        columns:
+          - name: seller_id
+            tests: [unique, not_null]
+      - name: geolocation
       - name: product_category_name_translation
+        columns:
+          - name: product_category_name
+            tests: [unique, not_null]

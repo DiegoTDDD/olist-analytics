@@ -16,7 +16,14 @@ models:
               arguments:
                 to: ref('dim_customers')
                 field: customer_id
+      - name: is_delayed
+        description: "True when the order arrived on a later calendar day than promised (delay_days > 0)"
+      - name: delay_days
+        description: "Delivery date minus promised date, in days; negative = early, null = not delivered"
+      - name: delivery_days
+        description: "Days from purchase to delivery"
       - name: review_score
+        description: "Most recent review score for the order (1-5); null if never reviewed"
         tests:
           - accepted_values:
               arguments:

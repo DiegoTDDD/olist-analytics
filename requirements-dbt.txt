@@ -1,0 +1,4 @@
+# Building the models: requirements.txt + dbt. Versions the dbt check last passed with.
+-r requirements.txt
+dbt-core==1.12.6
+dbt-duckdb==1.11.1

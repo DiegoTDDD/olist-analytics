@@ -54,10 +54,12 @@ select
     date_diff('day', orders.purchased_at, orders.delivered_to_customer_at) as delivery_days,
     date_diff('day', orders.estimated_delivery_at, orders.delivered_to_customer_at) as delay_days,
 
-    case
-        when orders.delivered_to_customer_at > orders.estimated_delivery_at then true
-        else false
-    end as is_delayed
+    -- Late = delivered on a later calendar day than promised. The promise is a date (stored as
+    -- midnight), so comparing timestamps would flag every delivery made on the promised day.
+    coalesce(
+        cast(orders.delivered_to_customer_at as date) > cast(orders.estimated_delivery_at as date),
+        false
+    ) as is_delayed
 
 from orders
 left join reviews   on orders.order_id = reviews.order_id

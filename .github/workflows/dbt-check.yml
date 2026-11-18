@@ -1,16 +1,27 @@
 name: dbt check
 
-# Runs the dbt project end to end against the committed olist.duckdb file:
-# dbt deps (downloads packages), dbt run (all models), dbt test (all tests).
+# Builds everything from the raw files, the way the README does: downloads the nine CSV files
+# (checked against pinned SHA-256 hashes), loads them with load_data.py, runs `dbt build`
+# (14 models and 35 tests), exports fct_orders and checks it equals the committed export the
+# dashboard reads, then starts the dashboard. It also builds the dbt documentation (lineage graph,
+# column descriptions, tests) as a downloadable artifact, and publishes it to GitHub Pages once
+# Pages is enabled (Settings > Pages > Source: GitHub Actions, then set the repository variable
+# DBT_DOCS_PAGES to true).
 on:
   push:
     paths:
       - "olist_dbt/**"
       - load_data.py
+      - export_marts.py
       - dashboard.py
-      - requirements.txt
+      - "data/marts/**"
+      - "scripts/**"
+      - "requirements*.txt"
       - ".github/workflows/dbt-check.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   dbt:
@@ -23,114 +34,82 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
-      - name: Install requirements and dbt
+      - name: Install the dashboard and dbt requirements
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt dbt-core dbt-duckdb
+          pip install -r requirements-dbt.txt ruff
+          pip check
 
-      - name: "README steps 1 and 3: download the nine CSV files and run python load_data.py"
+      - name: Lint the Python code
+        run: ruff check .
+
+      - name: "README step 1: download and verify the nine CSV files"
+        run: scripts/download_data.sh
+
+      - name: "README step 3: load them into DuckDB"
+        run: python load_data.py
+
+      - name: "README step 4: dbt build (models + tests)"
+        working-directory: olist_dbt
+        run: dbt build
+
+      - name: "README step 5: export fct_orders; it must equal the committed export"
         run: |
-          # The Kaggle download needs a login, so the nine files come from a public GitHub copy of the same
-          # dataset, pinned to one commit. The comparison below proves it holds exactly the same rows as
-          # the raw tables in the committed olist.duckdb, so it stands in for the Kaggle download.
-          mirror=https://raw.githubusercontent.com/dapanew/Ecommify_Database_Design/01e7a13821c227e700ac15e464e9b53a0474c507/postgresql/seed_data
-          mkdir -p data/raw
-          for f in olist_customers_dataset.csv olist_geolocation_dataset.csv olist_order_items_dataset.csv \
-                   olist_order_payments_dataset.csv olist_order_reviews_dataset.csv olist_orders_dataset.csv \
-                   olist_products_dataset.csv olist_sellers_dataset.csv product_category_name_translation.csv; do
-            curl -fsSL -o "data/raw/$f" "$mirror/$f"
-          done
-          ls -la data/raw
-          mv olist.duckdb olist.duckdb.committed
-          python load_data.py
+          git show HEAD:data/marts/fct_orders.parquet > /tmp/committed.parquet
+          python export_marts.py
           python - <<'PY'
           import duckdb
-          new = duckdb.connect("olist.duckdb", read_only=True)
-          new.execute("ATTACH 'olist.duckdb.committed' AS old (READ_ONLY)")
-          bad = []
-          for t in ["customers", "geolocation", "order_items", "order_payments", "order_reviews", "orders",
-                    "products", "product_category_name_translation", "sellers"]:
-              cols = [c[0] for c in new.execute(f"describe {t}").fetchall()]
-              sel = ", ".join(f"cast({c} as varchar) as {c}" for c in cols)
-              n_new = new.execute(f"select count(*) from {t}").fetchone()[0]
-              n_old = new.execute(f"select count(*) from old.{t}").fetchone()[0]
-              only_new = new.execute(f"select count(*) from (select {sel} from {t} except all select {sel} from old.{t})").fetchone()[0]
-              only_old = new.execute(f"select count(*) from (select {sel} from old.{t} except all select {sel} from {t})").fetchone()[0]
-              print(f"{t:36} downloaded={n_new:>8} committed={n_old:>8} only-in-download={only_new} only-in-committed={only_old}")
-              if n_new != n_old or only_new or only_old:
-                  bad.append(t)
-          assert not bad, bad
+          con = duckdb.connect()
+          new, old = "data/marts/fct_orders.parquet", "/tmp/committed.parquet"
+          rows = [con.execute(f"select count(*) from '{f}'").fetchone()[0] for f in (new, old)]
+          only_new = con.execute(f"select count(*) from (select * from '{new}' except all select * from '{old}')").fetchone()[0]
+          only_old = con.execute(f"select count(*) from (select * from '{old}' except all select * from '{new}')").fetchone()[0]
+          print(f"rebuilt={rows[0]:,} committed={rows[1]:,} only-in-rebuilt={only_new} only-in-committed={only_old}")
+          assert rows[0] == rows[1] and only_new == 0 and only_old == 0, "rerun export_marts.py and commit data/marts/"
           PY
-          rm olist.duckdb.committed
 
-      - name: "README step 3 (second run): the same script on CSV files written without quotes, as in the Kaggle file"
+      - name: "README step 6: the dashboard renders (both entry points)"
         run: |
-          # The Kaggle download needs a login, so the nine CSV files are recreated, with the original file
-          # names, from the raw tables in the committed olist.duckdb. They include the few rows with quoted
-          # fields (a city name with commas) that once broke the automatic CSV detection.
           python - <<'PY'
-          import os, duckdb
-          names = {"customers": "olist_customers_dataset.csv", "geolocation": "olist_geolocation_dataset.csv",
-                   "order_items": "olist_order_items_dataset.csv", "order_payments": "olist_order_payments_dataset.csv",
-                   "order_reviews": "olist_order_reviews_dataset.csv", "orders": "olist_orders_dataset.csv",
-                   "products": "olist_products_dataset.csv", "sellers": "olist_sellers_dataset.csv",
-                   "product_category_name_translation": "product_category_name_translation.csv"}
-          con = duckdb.connect("olist.duckdb", read_only=True)
-          os.makedirs("data/raw", exist_ok=True)
-          for table, file in names.items():
-              con.execute(f"COPY {table} TO 'data/raw/{file}' (HEADER, DELIMITER ',')")
-          print("CSV files written:", sorted(os.listdir("data/raw")))
+          from streamlit.testing.v1 import AppTest
+          for path in ["dashboard.py", "olist_dbt/models/staging/dashboard.py"]:
+              at = AppTest.from_file(path, default_timeout=120).run()
+              assert not at.exception, [e.value for e in at.exception]
+              print(path, [(m.label, m.value) for m in at.metric])
           PY
-          git show HEAD:olist.duckdb > olist.duckdb.committed
-          rm -f olist.duckdb
-          python load_data.py
-          python - <<'PY'
-          import duckdb
-          old = duckdb.connect("olist.duckdb.committed", read_only=True)
-          new = duckdb.connect("olist.duckdb", read_only=True)
-          bad = []
-          for (table,) in old.execute("select table_name from information_schema.tables where table_schema='main' and table_type='BASE TABLE'").fetchall():
-              if table not in ("customers", "geolocation", "order_items", "order_payments", "order_reviews", "orders", "products", "sellers", "product_category_name_translation"):
-                  continue
-              a = old.execute(f"select count(*) from {table}").fetchone()[0]
-              b = new.execute(f"select count(*) from {table}").fetchone()[0]
-              cols_a = [(c[0], c[1]) for c in old.execute(f"describe {table}").fetchall()]
-              cols_b = [(c[0], c[1]) for c in new.execute(f"describe {table}").fetchall()]
-              print(f"{table:36} {a:>8} -> {b:>8}  columns and types {'same' if cols_a == cols_b else 'DIFFERENT'}")
-              if a != b or cols_a != cols_b:
-                  bad.append(table)
-          assert not bad, bad
-          PY
-          rm olist.duckdb.committed
 
-      - name: Create the dbt connection profile
-        run: |
-          mkdir -p ~/.dbt
-          cat > ~/.dbt/profiles.yml <<'YML'
-          olist_dbt:
-            target: dev
-            outputs:
-              dev:
-                type: duckdb
-                path: ../olist.duckdb
-                threads: 1
-          YML
-
-      - name: dbt deps, run, test
+      - name: Generate the dbt documentation
         working-directory: olist_dbt
         run: |
-          dbt deps
-          dbt run
-          dbt test
+          dbt docs generate --static
+          mkdir -p ../site
+          cp target/static_index.html ../site/index.html
 
-      - name: "README step 5: the dashboard starts"
-        run: |
-          python -m streamlit run dashboard.py --server.headless true --server.port 8501 > streamlit.log 2>&1 &
-          for i in $(seq 1 45); do
-            if curl -sf http://127.0.0.1:8501/_stcore/health >/dev/null; then echo "dashboard is up"; exit 0; fi
-            sleep 2
-          done
-          echo "::error::the dashboard did not start"
-          tail -30 streamlit.log
-          exit 1
+      - name: Upload the documentation as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs
+          path: site/index.html
+
+      - name: Upload the documentation for GitHub Pages
+        if: github.ref == 'refs/heads/main' && vars.DBT_DOCS_PAGES == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  docs:
+    needs: dbt
+    if: github.ref == 'refs/heads/main' && vars.DBT_DOCS_PAGES == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

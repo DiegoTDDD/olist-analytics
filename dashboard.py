@@ -1,12 +1,19 @@
-import streamlit as st
+from pathlib import Path
+
 import duckdb
 import plotly.express as px
+import streamlit as st
 
 st.set_page_config(page_title="Olist Analytics", layout="wide")
 
+# The committed export of fct_orders (see export_marts.py), so the dashboard needs no database.
+FCT_ORDERS = Path(__file__).resolve().parent / "data" / "marts" / "fct_orders.parquet"
+
+
 @st.cache_data
 def load(query):
-    con = duckdb.connect("olist.duckdb")
+    con = duckdb.connect()
+    con.execute(f"CREATE VIEW fct_orders AS SELECT * FROM read_parquet('{FCT_ORDERS.as_posix()}')")
     df = con.execute(query).fetchdf()
     con.close()
     return df
@@ -38,7 +45,7 @@ delay = load("""
             when delay_days <= 0 then '1. On time or early'
             when delay_days between 1 and 5 then '2. 1-5 days late'
             when delay_days between 6 and 15 then '3. 6-15 days late'
-            else '4. 15+ days late'
+            else '4. 16+ days late'
         end as delay_bucket,
         round(avg(review_score), 2) as avg_score,
         count(*) as orders
@@ -52,7 +59,7 @@ fig = px.bar(delay, x="delay_bucket", y="avg_score", text="avg_score",
              labels={"delay_bucket": "Delivery outcome", "avg_score": "Avg. review score"},
              color="avg_score", color_continuous_scale="RdYlGn")
 fig.update_traces(textposition="outside")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -67,4 +74,4 @@ dist = load("""
 """)
 fig2 = px.bar(dist, x="review_score", y="orders",
               labels={"review_score": "Review score", "orders": "Number of orders"})
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig2, width="stretch")

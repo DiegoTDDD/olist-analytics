@@ -1,6 +1,8 @@
+from pathlib import Path
+
 import duckdb
 
-con = duckdb.connect("olist.duckdb")
+con = duckdb.connect(str(Path(__file__).resolve().parents[1] / "olist.duckdb"), read_only=True)
 
 print("=== Nota média: pedidos no prazo vs atrasados ===\n")
 resultado = con.execute("""
@@ -23,7 +25,7 @@ faixas = con.execute("""
             when delay_days <= 0 then 'No prazo ou adiantado'
             when delay_days between 1 and 5 then 'Atraso 1-5 dias'
             when delay_days between 6 and 15 then 'Atraso 6-15 dias'
-            else 'Atraso 15+ dias'
+            else 'Atraso 16+ dias'
         end as faixa_atraso,
         count(*) as pedidos,
         round(avg(review_score), 2) as nota_media

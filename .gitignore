@@ -1,5 +1,6 @@
 .venv/
-data/
+data/*
+!data/marts/
 __pycache__/
 .ipynb_checkpoints/
 logs/
@@ -12,3 +13,10 @@ olist_dbt/logs/
 .env
 .env.*
 !.env.example
+
+# The database is built locally (load_data.py + dbt build); the dashboard reads data/marts/.
+*.duckdb
+*.duckdb.wal
+olist_dbt/target/
+olist_dbt/dbt_packages/
+olist_dbt/logs/
