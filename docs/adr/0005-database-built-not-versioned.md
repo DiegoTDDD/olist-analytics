@@ -16,4 +16,4 @@ The repository shipped the finished DuckDB file (raw tables plus every model) so
 
 ## Consequences
 - The repository stops growing by 46 MB per rebuild. Past versions remain in the history; rewriting history would break existing clones, so it was not done.
-- A full rebuild from the CSV files reproduces the committed export byte for byte.
+- The rebuild must give the same table on any machine. Two sources of variation were found by this check and removed: tied reviews (ADR 0002), and money summed as floating point, whose last digits depended on how many CPU threads added the rows. Money is now summed as `DECIMAL`, which is exact.

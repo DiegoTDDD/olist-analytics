@@ -24,7 +24,9 @@ reviews as (
 payments as (
     select
         order_id,
-        sum(payment_value) as total_payment_value,
+        -- Money is summed as DECIMAL: exact, so the result does not depend on the order in
+        -- which parallel threads add the rows (float sums differed between machines).
+        sum(cast(payment_value as decimal(12, 2))) as total_payment_value,
         max(payment_installments) as max_installments
     from {{ ref('stg_order_payments') }}
     group by order_id
@@ -34,8 +36,8 @@ items as (
     select
         order_id,
         count(*) as item_count,
-        sum(price) as total_item_price,
-        sum(freight_value) as total_freight
+        sum(cast(price as decimal(12, 2))) as total_item_price,
+        sum(cast(freight_value as decimal(12, 2))) as total_freight
     from {{ ref('stg_order_items') }}
     group by order_id
 )
