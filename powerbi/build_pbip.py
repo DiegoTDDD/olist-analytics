@@ -192,6 +192,14 @@ MEASURES = [
      "Satisfação", "Nota média dos pedidos entregues depois do dia prometido."),
     ("Pontos perdidos no atraso", "[Nota no prazo] - [Nota com atraso]", "0.00", "Satisfação",
      "Diferença de nota entre pedidos no prazo e atrasados."),
+    ("Faturamento (meses completos)",
+     "VAR mes = SELECTEDVALUE ( 'Calendário'[Ano-mês] )\nRETURN IF ( mes >= 201701 && mes <= 201808, [Faturamento] )",
+     "\\R$ #,0", "Vendas",
+     "Faturamento só de jan/2017 a ago/2018: os meses antes e depois têm poucos pedidos e distorcem a série."),
+    ("% atrasados (meses completos)",
+     "VAR mes = SELECTEDVALUE ( 'Calendário'[Ano-mês] )\nRETURN IF ( mes >= 201701 && mes <= 201808, [% atrasados] )",
+     "0.0%", "Entrega",
+     "% de entregas atrasadas só de jan/2017 a ago/2018, pelo mesmo motivo."),
     ("Vendas (itens)", "SUM ( Itens[Preço] )", "\\R$ #,0", "Categorias e vendedores",
      "Soma do preço dos itens vendidos, sem frete."),
     ("Pedidos com o item", "DISTINCTCOUNT ( Itens[ID do pedido] )", "#,0", "Categorias e vendedores",
@@ -277,7 +285,7 @@ def table_tmdl(table: str) -> str:
         "\t\tsource =",
         "\t\t\t\tlet",
         "\t\t\t\t    Arquivo = if Text.StartsWith ( DataFolder, \"http\" )",
-        f'\t\t\t\t        then Web.Contents ( DataFolder & "/{source}.parquet" )',
+        f'\t\t\t\t        then Binary.Buffer ( Web.Contents ( DataFolder & "/{source}.parquet" ) )',
         f'\t\t\t\t        else File.Contents ( DataFolder & "\\{source}.parquet" ),',
         "\t\t\t\t    Fonte = Parquet.Document ( Arquivo ),",
         f"\t\t\t\t    Tipos = Table.TransformColumnTypes ( Fonte, {{{types}}} )",
@@ -474,13 +482,14 @@ class Page:
             "drillFilterOtherVisuals": True,
         })  # fmt: skip
 
-    def card(self, key, x, y, w, h, measure: str, label: str, value_color: str = INK):
+    def card(self, key, x, y, w, h, measure: str, label: str, value_color: str = INK, units: float = 0.0):
+        """units: 0 = automatic (16 Mi), 1 = none (99.441)."""
         self.add(key, x, y, w, h, {
             "visualType": "card",
             "query": {"queryState": {"Values": {"projections": [M(measure, label)]}}},
             "objects": {
                 "labels": [{"properties": {"color": color(value_color), "fontSize": lit(26.0),
-                                           "fontFamily": lit("Segoe UI Semibold")}}],
+                                           "fontFamily": lit("Segoe UI Semibold"), "labelDisplayUnits": lit(units)}}],
                 "categoryLabels": [{"properties": {"show": lit(True), "color": color(MUTED), "fontSize": lit(10.0)}}],
             },
             "visualContainerObjects": container(None),
@@ -502,7 +511,7 @@ class Page:
             "drillFilterOtherVisuals": True,
         })  # fmt: skip
 
-    def chart(self, key, x, y, w, h, vtype, title, roles: dict, sort=None, objects=None):
+    def chart(self, key, x, y, w, h, vtype, title, roles: dict, sort=None, objects=None, filters=None):
         query = {"queryState": {role: {"projections": ps} for role, ps in roles.items()}}
         if sort:
             kind, table, prop, direction = sort
@@ -515,6 +524,8 @@ class Page:
             "visualContainerObjects": container(title),
             "drillFilterOtherVisuals": True,
         })  # fmt: skip
+        if filters:
+            self.visuals[-1]["filterConfig"] = {"filters": filters}
 
     def json(self) -> dict:
         return {
@@ -532,8 +543,10 @@ def axis_objects(fill: str, line: str | None = None, labels: bool = True, legend
     obj = {
         "dataPoint": [{"properties": {"fill": color(fill)}}],
         "categoryAxis": [{"properties": {"labelColor": color(MUTED), "fontSize": lit(9.0), "showAxisTitle": lit(False)}}],
-        "valueAxis": [{"properties": {"show": lit(False), "gridlineShow": lit(False)}}],
-        "labels": [{"properties": {"show": lit(labels), "color": color(INK), "fontSize": lit(9.0)}}],
+        "valueAxis": [{"properties": {"show": lit(False), "gridlineShow": lit(False), "showAxisTitle": lit(False),
+                                      "secShowAxisTitle": lit(False), "secLabelColor": color(MUTED)}}],
+        "labels": [{"properties": {"show": lit(labels), "color": color(INK), "fontSize": lit(9.0),
+                                   "labelOverflow": lit(True)}}],
         "legend": [{"properties": {"show": lit(legend), "position": lit("Top"), "labelColor": color(MUTED)}}],
     }
     if line:
@@ -543,7 +556,7 @@ def axis_objects(fill: str, line: str | None = None, labels: bool = True, legend
 
 def build_pages(stats: dict) -> list[Page]:
     p1 = Page("overview", "Visão geral")
-    p1.text("title", 24, 14, 820, 64, [
+    p1.text("title", 24, 10, 820, 76, [
         ("Olist: vendas, entregas e satisfação\n", "20pt", INK, True),
         (stats["subtitle"] + "\n", "10pt", MUTED, False),
     ])
@@ -553,24 +566,25 @@ def build_pages(stats: dict) -> list[Page]:
              ("Ticket médio", "Ticket médio", INK), ("% atrasados", "Entregas atrasadas", AMBER),
              ("Nota média", "Nota média (1 a 5)", TEAL)]  # fmt: skip
     for i, (m, label, col) in enumerate(cards):
-        p1.card(f"card{i}", 24 + i * 248, 92, 236, 96, m, label, col)
+        p1.card(f"card{i}", 24 + i * 248, 92, 236, 96, m, label, col, units=1.0 if m == "Pedidos (qtd)" else 0.0)
     p1.chart("monthly", 24, 204, 812, 500, "lineClusteredColumnComboChart",
              "Faturamento por mês (colunas) e entregas atrasadas (linha)",
-             {"Category": [C("Calendário", "Mês")], "Y": [M("Faturamento")], "Y2": [M("% atrasados")]},
+             {"Category": [C("Calendário", "Mês")], "Y": [M("Faturamento (meses completos)", "Faturamento")],
+              "Y2": [M("% atrasados (meses completos)", "% atrasados")]},
              sort=("Column", "Calendário", "Mês", "Ascending"),
              objects={**axis_objects(NAVY, line=AMBER, labels=False, legend=True),
-                      "dataPoint": [{"properties": {"fill": color(NAVY)}, "selector": {"metadata": "Medidas.Faturamento"}},
-                                    {"properties": {"fill": color(AMBER)}, "selector": {"metadata": "Medidas.% atrasados"}}]})  # fmt: skip
+                      "dataPoint": [{"properties": {"fill": color(NAVY)}, "selector": {"metadata": "Medidas.Faturamento (meses completos)"}},
+                                    {"properties": {"fill": color(AMBER)}, "selector": {"metadata": "Medidas.% atrasados (meses completos)"}}]})  # fmt: skip
     p1.chart("states", 848, 204, 408, 500, "clusteredBarChart", "Faturamento por estado do cliente",
              {"Category": [C("Clientes", "Estado")], "Y": [M("Faturamento")]},
              sort=("Measure", "Medidas", "Faturamento", "Descending"), objects=axis_objects(TEAL))
 
     p2 = Page("delay", "Atraso e nota")
-    p2.text("title", 24, 14, 1232, 70, [
+    p2.text("title", 24, 10, 1232, 80, [
         (stats["headline"] + "\n", "20pt", INK, True),
         (stats["curve"] + "\n", "10pt", MUTED, False),
     ])
-    p2.chart("curve", 24, 96, 812, 440, "lineClusteredColumnComboChart",
+    p2.chart("curve", 24, 100, 812, 436, "lineClusteredColumnComboChart",
              "Nota média (colunas) e parcela de notas 1 (linha) por dias de atraso, pedidos entregues",
              {"Category": [C("Pedidos", "Faixa de atraso")], "Y": [M("Nota média (entregues)", "Nota média")],
               "Y2": [M("% nota 1 (entregues)", "% nota 1")]},
@@ -581,7 +595,7 @@ def build_pages(stats: dict) -> list[Page]:
     small = [("Pedidos atrasados", "Pedidos atrasados", AMBER), ("% atrasados", "Entregas atrasadas", AMBER),
              ("Nota no prazo", "Nota no prazo", TEAL), ("Nota com atraso", "Nota com atraso", AMBER)]  # fmt: skip
     for i, (m, label, col) in enumerate(small):
-        p2.card(f"card{i}", 848 + (i % 2) * 208, 96 + (i // 2) * 104, 200, 96, m, label, col)
+        p2.card(f"card{i}", 848 + (i % 2) * 208, 100 + (i // 2) * 102, 200, 94, m, label, col)
     p2.chart("late_states", 848, 304, 408, 400, "clusteredBarChart", "Entregas atrasadas por estado do cliente",
              {"Category": [C("Clientes", "Estado")], "Y": [M("% atrasados")]},
              sort=("Measure", "Medidas", "% atrasados", "Descending"), objects=axis_objects(AMBER))
@@ -592,14 +606,18 @@ def build_pages(stats: dict) -> list[Page]:
     ])
 
     p3 = Page("categories", "Categorias e vendedores")
-    p3.text("title", 24, 14, 1232, 64, [
+    p3.text("title", 24, 10, 1232, 76, [
         ("Onde vendemos e onde atrasamos\n", "20pt", INK, True),
         ("Vendas sem frete por categoria de produto, e atraso e nota medidos por pedido que contém o item.\n",
          "10pt", MUTED, False),
     ])
+    # Room after the longest bar for its label (the data is a fixed snapshot; largest is about R$ 1.26 Mi).
+    cats_objects = axis_objects(NAVY)
+    cats_objects["valueAxis"][0]["properties"].update({"end": lit(1500000.0), "start": lit(0.0)})
+    cats_objects["labels"][0]["properties"]["labelDensity"] = lit(100.0)
     p3.chart("cats", 24, 92, 520, 612, "clusteredBarChart", "Vendas por categoria",
              {"Category": [C("Produtos", "Categoria")], "Y": [M("Vendas (itens)")]},
-             sort=("Measure", "Medidas", "Vendas (itens)", "Descending"), objects=axis_objects(NAVY))
+             sort=("Measure", "Medidas", "Vendas (itens)", "Descending"), objects=cats_objects)
     p3.chart("table", 556, 92, 700, 330, "tableEx", "Categorias: vendas, atraso e nota",
              {"Values": [C("Produtos", "Categoria"), M("Vendas (itens)", "Vendas"),
                          M("Pedidos com o item", "Pedidos"), M("% atrasados (itens)", "Atrasados"),
@@ -612,6 +630,8 @@ def build_pages(stats: dict) -> list[Page]:
              {"Category": [C("Vendedores", "Estado do vendedor")], "X": [M("Pedidos com o item", "Pedidos")],
               "Y": [M("% atrasados (itens)", "Atrasados")]},
              objects={"dataPoint": [{"properties": {"fill": color(TEAL)}}],
+                      "categoryAxis": [{"properties": {"labelColor": color(MUTED), "labelDisplayUnits": lit(1.0)}}],
+                      "valueAxis": [{"properties": {"labelColor": color(MUTED)}}],
                       "categoryLabels": [{"properties": {"show": lit(True), "color": color(INK)}}]})  # fmt: skip
     return [p1, p2, p3]
 
@@ -662,6 +682,7 @@ def build_report(root: Path, stats: dict) -> None:
             {"name": "RegisteredResources", "type": "RegisteredResources",
              "items": [{"name": "OlistTheme.json", "path": "OlistTheme.json", "type": "CustomTheme"}]},
         ],
+        "objects": {"outspacePane": [{"properties": {"expanded": lit(False)}}]},
         "settings": {"useStylableVisualContainerHeader": True, "exportDataMode": "AllowSummarized",
                      "defaultDrillFilterOtherVisuals": True, "allowChangeFilterTypes": True,
                      "useEnhancedTooltips": True, "useDefaultAggregateDisplayName": True},

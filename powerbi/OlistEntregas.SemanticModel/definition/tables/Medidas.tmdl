@@ -105,6 +105,24 @@ table Medidas
 		displayFolder: Satisfação
 		lineageTag: 7bc4cef4-5589-53e1-9ef2-bca9b9e79894
 
+	/// Faturamento só de jan/2017 a ago/2018: os meses antes e depois têm poucos pedidos e distorcem a série.
+	measure 'Faturamento (meses completos)' = ```
+		VAR mes = SELECTEDVALUE ( 'Calendário'[Ano-mês] )
+		RETURN IF ( mes >= 201701 && mes <= 201808, [Faturamento] )
+		```
+		formatString: \R$ #,0
+		displayFolder: Vendas
+		lineageTag: c4f60bc3-6ee9-5ff1-bfd3-1fc00146bb0d
+
+	/// % de entregas atrasadas só de jan/2017 a ago/2018, pelo mesmo motivo.
+	measure '% atrasados (meses completos)' = ```
+		VAR mes = SELECTEDVALUE ( 'Calendário'[Ano-mês] )
+		RETURN IF ( mes >= 201701 && mes <= 201808, [% atrasados] )
+		```
+		formatString: 0.0%
+		displayFolder: Entrega
+		lineageTag: 23372db7-9318-5b76-9597-5ea34017e4fe
+
 	/// Soma do preço dos itens vendidos, sem frete.
 	measure 'Vendas (itens)' = SUM ( Itens[Preço] )
 		formatString: \R$ #,0

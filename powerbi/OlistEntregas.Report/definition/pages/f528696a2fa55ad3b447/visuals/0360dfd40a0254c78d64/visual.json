@@ -62,6 +62,13 @@
                   "Value": "'Segoe UI Semibold'"
                 }
               }
+            },
+            "labelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "1.0D"
+                }
+              }
             }
           }
         }

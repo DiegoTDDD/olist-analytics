@@ -41,11 +41,12 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "Faturamento"
+                  "Property": "Faturamento (meses completos)"
                 }
               },
-              "queryRef": "Medidas.Faturamento",
-              "nativeQueryRef": "Faturamento"
+              "queryRef": "Medidas.Faturamento (meses completos)",
+              "nativeQueryRef": "Faturamento (meses completos)",
+              "displayName": "Faturamento"
             }
           ]
         },
@@ -59,11 +60,12 @@
                       "Entity": "Medidas"
                     }
                   },
-                  "Property": "% atrasados"
+                  "Property": "% atrasados (meses completos)"
                 }
               },
-              "queryRef": "Medidas.% atrasados",
-              "nativeQueryRef": "% atrasados"
+              "queryRef": "Medidas.% atrasados (meses completos)",
+              "nativeQueryRef": "% atrasados (meses completos)",
+              "displayName": "% atrasados"
             }
           ]
         }
@@ -104,7 +106,7 @@
             }
           },
           "selector": {
-            "metadata": "Medidas.Faturamento"
+            "metadata": "Medidas.Faturamento (meses completos)"
           }
         },
         {
@@ -122,7 +124,7 @@
             }
           },
           "selector": {
-            "metadata": "Medidas.% atrasados"
+            "metadata": "Medidas.% atrasados (meses completos)"
           }
         }
       ],
@@ -173,6 +175,31 @@
                   "Value": "false"
                 }
               }
+            },
+            "showAxisTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "secShowAxisTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "secLabelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#5B6676'"
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -202,6 +229,13 @@
               "expr": {
                 "Literal": {
                   "Value": "9.0D"
+                }
+              }
+            },
+            "labelOverflow": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }

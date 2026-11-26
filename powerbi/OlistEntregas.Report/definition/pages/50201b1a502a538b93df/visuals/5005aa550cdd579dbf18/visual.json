@@ -3,9 +3,9 @@
   "name": "5005aa550cdd579dbf18",
   "position": {
     "x": 24,
-    "y": 96,
+    "y": 100,
     "z": 2000,
-    "height": 440,
+    "height": 436,
     "width": 812,
     "tabOrder": 2000
   },
@@ -175,6 +175,31 @@
                   "Value": "false"
                 }
               }
+            },
+            "showAxisTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "secShowAxisTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "secLabelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#5B6676'"
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -204,6 +229,13 @@
               "expr": {
                 "Literal": {
                   "Value": "9.0D"
+                }
+              }
+            },
+            "labelOverflow": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }

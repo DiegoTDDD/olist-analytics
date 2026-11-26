@@ -107,7 +107,7 @@ table 'Calendário'
 		source =
 				let
 				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
-				        then Web.Contents ( DataFolder & "/dim_dates.parquet" )
+				        then Binary.Buffer ( Web.Contents ( DataFolder & "/dim_dates.parquet" ) )
 				        else File.Contents ( DataFolder & "\dim_dates.parquet" ),
 				    Fonte = Parquet.Document ( Arquivo ),
 				    Tipos = Table.TransformColumnTypes ( Fonte, {{"date_day", type date}, {"year", Int64.Type}, {"quarter", Int64.Type}, {"month", Int64.Type}, {"day", Int64.Type}, {"day_of_week", Int64.Type}, {"day_name", type text}, {"month_name", type text}, {"is_weekend", type logical}} )

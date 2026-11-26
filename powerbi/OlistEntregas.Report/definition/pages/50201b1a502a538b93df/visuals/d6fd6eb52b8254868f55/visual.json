@@ -3,9 +3,9 @@
   "name": "d6fd6eb52b8254868f55",
   "position": {
     "x": 848,
-    "y": 200,
+    "y": 202,
     "z": 5000,
-    "height": 96,
+    "height": 94,
     "width": 200,
     "tabOrder": 5000
   },
@@ -60,6 +60,13 @@
               "expr": {
                 "Literal": {
                   "Value": "'Segoe UI Semibold'"
+                }
+              }
+            },
+            "labelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "0.0D"
                 }
               }
             }

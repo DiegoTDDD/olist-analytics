@@ -104,7 +104,7 @@ table Itens
 		source =
 				let
 				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
-				        then Web.Contents ( DataFolder & "/fct_order_items.parquet" )
+				        then Binary.Buffer ( Web.Contents ( DataFolder & "/fct_order_items.parquet" ) )
 				        else File.Contents ( DataFolder & "\fct_order_items.parquet" ),
 				    Fonte = Parquet.Document ( Arquivo ),
 				    Tipos = Table.TransformColumnTypes ( Fonte, {{"order_id", type text}, {"order_item_id", Int64.Type}, {"product_id", type text}, {"seller_id", type text}, {"status", type text}, {"purchase_date", type date}, {"price", Currency.Type}, {"freight_value", Currency.Type}, {"is_delayed", type logical}, {"delay_days", Int64.Type}, {"review_score", Int64.Type}} )

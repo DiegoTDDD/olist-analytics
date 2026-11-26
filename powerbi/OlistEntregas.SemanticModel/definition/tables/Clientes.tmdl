@@ -48,7 +48,7 @@ table Clientes
 		source =
 				let
 				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
-				        then Web.Contents ( DataFolder & "/dim_customers.parquet" )
+				        then Binary.Buffer ( Web.Contents ( DataFolder & "/dim_customers.parquet" ) )
 				        else File.Contents ( DataFolder & "\dim_customers.parquet" ),
 				    Fonte = Parquet.Document ( Arquivo ),
 				    Tipos = Table.TransformColumnTypes ( Fonte, {{"customer_id", type text}, {"customer_unique_id", type text}, {"customer_zip_code_prefix", type text}, {"customer_city", type text}, {"customer_state", type text}} )

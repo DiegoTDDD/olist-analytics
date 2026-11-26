@@ -90,7 +90,7 @@ table Produtos
 		source =
 				let
 				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
-				        then Web.Contents ( DataFolder & "/dim_products.parquet" )
+				        then Binary.Buffer ( Web.Contents ( DataFolder & "/dim_products.parquet" ) )
 				        else File.Contents ( DataFolder & "\dim_products.parquet" ),
 				    Fonte = Parquet.Document ( Arquivo ),
 				    Tipos = Table.TransformColumnTypes ( Fonte, {{"product_id", type text}, {"product_category_name", type text}, {"category_name_english", type text}, {"product_weight_g", Int64.Type}, {"product_length_cm", Int64.Type}, {"product_height_cm", Int64.Type}, {"product_width_cm", Int64.Type}, {"product_photos_qty", Int64.Type}} )

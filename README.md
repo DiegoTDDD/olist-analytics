@@ -5,24 +5,39 @@
 
 **Problem.** An e-commerce marketplace knows that late deliveries hurt reviews. What it does not know is how much they hurt, how quickly, and whether operations should cut the size of delays or prevent them altogether.
 
-**Solution.** A tested star schema built with dbt on DuckDB over about 100,000 real Olist orders, and a dashboard that answers that question.
+**Solution.** A tested star schema built with dbt on DuckDB over about 100,000 real Olist orders, a three-page Power BI report with 22 DAX measures on top of it, and a Streamlit dashboard.
 
-**🔗 Live dashboard:** https://diegotddd-olist-analytics.streamlit.app · **Design decisions:** [`docs/adr/`](docs/adr/README.md)
+**📊 Power BI:** [download `OlistEntregas.pbix`](https://github.com/DiegoTDDD/olist-analytics/releases/latest) or open [`powerbi/OlistEntregas.pbip`](powerbi/) · **🔗 Live dashboard:** https://diegotddd-olist-analytics.streamlit.app · **Design decisions:** [`docs/adr/`](docs/adr/README.md)
 
 ## Key finding
 
-Customer satisfaction does not decline gradually when an order is late — it collapses. A single day past the promised delivery date is enough to drop the average review score from 4.29 to around 3, and once an order is more than a week late, customers give close to the lowest possible rating.
+6.8% of delivered orders arrive late, and every day of delay costs rating until about the sixth day. After that the rating stays near its floor, so extra days hardly matter any more.
 
-| Delivery outcome | Orders | Avg. review score |
-|---|---:|---:|
-| On time or early | 89,448 | 4.29 |
-| 1–5 days late | 2,722 | 2.99 |
-| 6–15 days late | 2,480 | 1.74 |
-| 16+ days late | 1,180 | 1.73 |
+| Delivered | Orders | Avg. review score | 1-star share |
+|---|---:|---:|---:|
+| On time or early | 89,936 | 4.29 | 6.6% |
+| 1 day late | 825 | 3.73 | 13.0% |
+| 3 days late | 500 | 2.68 | 42.5% |
+| 6 days late | 419 | 1.81 | 68.6% |
+| 11+ days late | 2,092 | 1.71 | 69.5% |
 
-The business implication is direct: for Olist, preventing *any* delay matters far more than reducing the size of a delay. Almost all of the reputational damage happens in the first days past the deadline, so operational effort is best spent on hitting the promised date rather than on shortening already-late deliveries.
+The business implication: logistics money pays off inside the first week of a delay. Turning a 3-day delay into a 1-day one recovers about one point of rating; turning a 20-day delay into a 12-day one recovers almost none. The orders that just missed their date are the ones to rescue first. This is correlation in observational data: late orders may differ in other ways.
 
-**Model quality:** 14 dbt models and 35 tests, run on every change from the raw files, including five singular tests for the business rules ([below](#data-quality-tests)).
+**Model quality:** 15 dbt models and 43 tests, run on every change from the raw files, including seven singular tests for the business rules ([below](#data-quality-tests)).
+
+## Power BI report
+
+Three pages on the same star schema, in Portuguese, generated as code: [`powerbi/build_pbip.py`](powerbi/build_pbip.py) writes the semantic model (TMDL: tables, relationships, a marked date table, 22 DAX measures) and the report pages (PBIR), and the texts on the pages are computed from the data. CI regenerates the project and fails if it differs from the committed one.
+
+![Power BI: overview with revenue, orders, ticket, late deliveries and rating](images/powerbi-overview.png)
+
+![Power BI: rating by days late, with the decision it supports](images/powerbi-delay.png)
+
+![Power BI: sales, late deliveries and rating by product category and seller state](images/powerbi-categories.png)
+
+Measures include revenue, average ticket, year-over-year growth (`SAMEPERIODLASTYEAR`), late-delivery rate, rating on time vs. late, 1-star share, and item-level measures that count each order once (`AVERAGEX` over `VALUES`). The monthly chart shows January 2017 to August 2018 only, through measures, because the months before and after have a handful of orders and a late rate over a dozen orders swings to 0% or 100%.
+
+**To open it:** download `OlistEntregas.pbix` from the [latest release](https://github.com/DiegoTDDD/olist-analytics/releases/latest), or clone the repository and open `powerbi/OlistEntregas.pbip` in Power BI Desktop and refresh. Either way the data comes from the Parquet files committed in [`data/powerbi/`](data/powerbi/); to use a local copy, change the `DataFolder` parameter (Transform data > Edit parameters).
 
 ## Dashboard
 
@@ -52,22 +67,25 @@ The project follows a layered dbt architecture and a star schema.
 - `dim_customers` — customer identity and location (preserving both `customer_id` per order and `customer_unique_id` per person).
 - `dim_products` — product attributes joined to the English category translation.
 - `dim_sellers` — seller identity and location.
+- `fct_order_items` — one row per item sold, with the order's status, date, delay and review carried on it, for category and seller analysis.
 - `dim_dates` — a date spine with year, quarter, month, day of week, and weekend flag.
 
 The `delay_days` measure (actual delivery date minus the estimated date) is the metric that links operations to customer satisfaction.
 
 ## Data quality tests
 
-`dbt build` runs 35 tests before anything is published:
+`dbt build` runs 43 tests before anything is published:
 
 - **Sources (17):** unique and not-null primary keys on orders, customers, products, sellers and category translations; order items that point at real orders; review scores between 1 and 5. The CSV files themselves are checked against pinned SHA-256 hashes.
-- **Models (13):** unique and not-null keys on every dimension and on the fact, the relationship from `fct_orders` to `dim_customers`, and review scores between 1 and 5.
-- **Business rules (5 singular tests in `olist_dbt/tests/`):**
+- **Models (19):** unique and not-null keys on every dimension and on the order fact, the relationship from `fct_orders` to `dim_customers`, review scores between 1 and 5, and the relationships from every item in `fct_order_items` to its order, product and seller.
+- **Business rules (7 singular tests in `olist_dbt/tests/`):**
   - exactly one fact row per order, so no join duplicates or drops orders;
   - `is_delayed` agrees with `delay_days > 0`;
   - no delivery before purchase;
   - no negative amounts;
-  - delivered orders have a delivery date (warning above 10).
+  - delivered orders have a delivery date (warning above 10);
+  - exactly one item row per order item;
+  - item prices and freight add up, order by order, to the totals on `fct_orders`.
 
 The tests have caught two real bugs:
 
@@ -96,6 +114,7 @@ There is no source freshness check, because this is a fixed historical snapshot 
 
 - **DuckDB** — in-process analytical database
 - **dbt** (dbt-core + dbt-duckdb) — transformations, lineage, and modeling
+- **Power BI** (TMDL semantic model, PBIR report, DAX) — the three-page report
 - **Streamlit + Plotly** — interactive dashboard
 - **Python** — data loading and analysis scripts
 - **Git / GitHub** — version control
@@ -106,8 +125,11 @@ There is no source freshness check, because this is a fixed historical snapshot 
 olist-analytics/
 ├── load_data.py            # Loads the raw CSVs into DuckDB
 ├── export_marts.py         # fct_orders -> data/marts/fct_orders.parquet for the dashboard
+├── export_powerbi.py       # the six star-schema tables -> data/powerbi/*.parquet
+├── powerbi/                # Power BI project (OlistEntregas.pbip) and its generator, build_pbip.py
 ├── dashboard.py            # Streamlit dashboard (reads data/marts/)
 ├── data/marts/             # Committed export the dashboard reads
+├── data/powerbi/           # Committed export the Power BI report reads
 ├── scripts/
 │   ├── download_data.sh    # downloads the nine CSV files and checks their SHA-256
 │   ├── olist_csv.sha256
@@ -168,7 +190,7 @@ The dashboard only needs step 1 (with `requirements.txt`) and the committed `dat
 
 ## Automated checks
 
-- **dbt check** (`dbt-check.yml`) runs on every change to the models, scripts or export. It downloads and verifies the nine CSV files, loads them, runs `dbt build` (14 models and 35 tests), rebuilds the export and fails if it differs from the committed one, renders the dashboard, and builds the dbt documentation (downloadable from each run).
+- **dbt check** (`dbt-check.yml`) runs on every change to the models, scripts or export. It downloads and verifies the nine CSV files, loads them, runs `dbt build` (15 models and 43 tests), rebuilds the exports and the Power BI project and fails if any differs from the committed one, renders the dashboard, and builds the dbt documentation (downloadable from each run).
 - **Windows check** (`windows-check.yml`) installs and smoke-tests the project on Windows.
 - **Security audit** (`security-audit.yml`) audits every `requirements*.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
 - **App health** (`app-health.yml`) opens the [live app](https://diegotddd-olist-analytics.streamlit.app) in a real browser after each push and once a day (waking it if it was asleep) and fails if the app shows an error.

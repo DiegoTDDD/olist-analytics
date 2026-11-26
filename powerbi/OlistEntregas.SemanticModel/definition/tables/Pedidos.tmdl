@@ -151,7 +151,7 @@ table Pedidos
 		source =
 				let
 				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
-				        then Web.Contents ( DataFolder & "/fct_orders.parquet" )
+				        then Binary.Buffer ( Web.Contents ( DataFolder & "/fct_orders.parquet" ) )
 				        else File.Contents ( DataFolder & "\fct_orders.parquet" ),
 				    Fonte = Parquet.Document ( Arquivo ),
 				    Tipos = Table.TransformColumnTypes ( Fonte, {{"order_id", type text}, {"customer_id", type text}, {"status", type text}, {"purchase_date", type date}, {"total_payment_value", Currency.Type}, {"max_installments", Int64.Type}, {"item_count", Int64.Type}, {"total_item_price", Currency.Type}, {"total_freight", Currency.Type}, {"review_score", Int64.Type}, {"delivery_days", Int64.Type}, {"delay_days", Int64.Type}, {"is_delayed", type logical}} )
