@@ -7,7 +7,7 @@
 
 **Solution.** A tested star schema built with dbt on DuckDB over about 100,000 real Olist orders, a three-page Power BI report with 22 DAX measures on top of it, and a Streamlit dashboard.
 
-**📊 Power BI:** [download `OlistEntregas.pbix`](https://github.com/DiegoTDDD/olist-analytics/releases/latest) or open [`powerbi/OlistEntregas.pbip`](powerbi/) · **🔗 Live dashboard:** https://diegotddd-olist-analytics.streamlit.app · **Design decisions:** [`docs/adr/`](docs/adr/README.md)
+**📊 Power BI:** [download `OlistEntregas.pbix`](https://github.com/DiegoTDDD/olist-analytics/raw/main/powerbi/OlistEntregas.pbix) or open [`powerbi/OlistEntregas.pbip`](powerbi/) · **🔗 Live dashboard:** https://diegotddd-olist-analytics.streamlit.app · **Design decisions:** [`docs/adr/`](docs/adr/README.md)
 
 ## Key finding
 
@@ -37,7 +37,7 @@ Three pages on the same star schema, in Portuguese, generated as code: [`powerbi
 
 Measures include revenue, average ticket, year-over-year growth (`SAMEPERIODLASTYEAR`), late-delivery rate, rating on time vs. late, 1-star share, and item-level measures that count each order once (`AVERAGEX` over `VALUES`). The monthly chart shows January 2017 to August 2018 only, through measures, because the months before and after have a handful of orders and a late rate over a dozen orders swings to 0% or 100%.
 
-**To open it:** download `OlistEntregas.pbix` from the [latest release](https://github.com/DiegoTDDD/olist-analytics/releases/latest), or clone the repository and open `powerbi/OlistEntregas.pbip` in Power BI Desktop and refresh. Either way the data comes from the Parquet files committed in [`data/powerbi/`](data/powerbi/); to use a local copy, change the `DataFolder` parameter (Transform data > Edit parameters).
+**To open it:** download [`OlistEntregas.pbix`](https://github.com/DiegoTDDD/olist-analytics/raw/main/powerbi/OlistEntregas.pbix) (17 MB, data included) and open it in Power BI Desktop, or clone the repository and open `powerbi/OlistEntregas.pbip` in Power BI Desktop and refresh. Either way the data comes from the Parquet files committed in [`data/powerbi/`](data/powerbi/); to use a local copy, change the `DataFolder` parameter (Transform data > Edit parameters).
 
 ## Dashboard
 
