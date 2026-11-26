@@ -1,0 +1,117 @@
+table 'Calendário'
+	lineageTag: 2165bb18-7d7f-5007-a794-e1e737679e2f
+	dataCategory: Time
+
+	column Data
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		lineageTag: 74aa7661-5983-56dc-b4f7-74ba3420f149
+		summarizeBy: none
+		sourceColumn: date_day
+		isKey
+
+		annotation SummarizationSetBy = User
+
+	column Ano
+		dataType: int64
+		formatString: 0
+		lineageTag: 72dbdd46-322b-5e51-bb11-6e663d255486
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = User
+
+	column Trimestre
+		dataType: int64
+		formatString: 0
+		lineageTag: 2ca4f9de-7f87-5891-a9bb-7b495ff36e54
+		summarizeBy: none
+		sourceColumn: quarter
+
+		annotation SummarizationSetBy = User
+
+	column 'Mês nº'
+		dataType: int64
+		formatString: 0
+		lineageTag: 59cc59bb-d0da-5c7b-8a7d-bf0acd9b66b5
+		summarizeBy: none
+		sourceColumn: month
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column Dia
+		dataType: int64
+		formatString: 0
+		lineageTag: e8202151-de78-5242-bafb-5be0b195a0fc
+		summarizeBy: none
+		sourceColumn: day
+
+		annotation SummarizationSetBy = User
+
+	column 'Dia da semana nº'
+		dataType: int64
+		formatString: 0
+		lineageTag: 8507a67d-054b-5cb3-99ba-cd106c45b121
+		summarizeBy: none
+		sourceColumn: day_of_week
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Dia da semana (inglês)'
+		dataType: string
+		lineageTag: 35c92c25-d63c-5db8-9514-45bd39683eed
+		summarizeBy: none
+		sourceColumn: day_name
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Mês (inglês)'
+		dataType: string
+		lineageTag: 2ab7209c-26ce-52e5-8122-808f6fc039d2
+		summarizeBy: none
+		sourceColumn: month_name
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Fim de semana'
+		dataType: boolean
+		lineageTag: e043eebd-f2f1-5dc6-922f-4bf96534ee5d
+		summarizeBy: none
+		sourceColumn: is_weekend
+
+		annotation SummarizationSetBy = User
+
+	column 'Ano-mês' = 'Calendário'[Ano] * 100 + 'Calendário'[Mês nº]
+		dataType: int64
+		formatString: 0
+		lineageTag: ad2c5609-e40a-55d0-a9ce-2fd90458bbf4
+		summarizeBy: none
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Mês' = FORMAT ( 'Calendário'[Data], "mmm/yy" )
+		dataType: string
+		lineageTag: 1701b181-9486-534a-a08a-76591f0f5557
+		summarizeBy: none
+		sortByColumn: 'Ano-mês'
+
+		annotation SummarizationSetBy = User
+
+	partition 'Calendário' = m
+		mode: import
+		source =
+				let
+				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
+				        then Web.Contents ( DataFolder & "/dim_dates.parquet" )
+				        else File.Contents ( DataFolder & "\dim_dates.parquet" ),
+				    Fonte = Parquet.Document ( Arquivo ),
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"date_day", type date}, {"year", Int64.Type}, {"quarter", Int64.Type}, {"month", Int64.Type}, {"day", Int64.Type}, {"day_of_week", Int64.Type}, {"day_name", type text}, {"month_name", type text}, {"is_weekend", type logical}} )
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

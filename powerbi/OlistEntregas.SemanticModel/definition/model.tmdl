@@ -1,0 +1,21 @@
+model Model
+	culture: pt-BR
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: pt-BR
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["DataFolder", "Pedidos", "Itens", "Clientes", "Produtos", "Vendedores", "Calendário"]
+
+ref table Pedidos
+ref table Itens
+ref table Clientes
+ref table Produtos
+ref table Vendedores
+ref table 'Calendário'
+ref table Medidas
+
+ref cultureInfo pt-BR

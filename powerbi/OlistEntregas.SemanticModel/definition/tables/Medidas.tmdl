@@ -1,0 +1,154 @@
+table Medidas
+	lineageTag: d20185f7-4d30-5abe-9909-f502f6e5edef
+
+	/// Soma do valor pago pelos pedidos, todas as formas de pagamento.
+	measure Faturamento = SUM ( Pedidos[Valor pago] )
+		formatString: \R$ #,0
+		displayFolder: Vendas
+		lineageTag: f0036fad-3574-5b09-abcf-d84b0d630f7f
+
+	/// Quantidade de pedidos.
+	measure 'Pedidos (qtd)' = COUNTROWS ( Pedidos )
+		formatString: #,0
+		displayFolder: Vendas
+		lineageTag: ff4e3f90-5946-5913-8794-5da74c80a922
+
+	/// Faturamento dividido pela quantidade de pedidos.
+	measure 'Ticket médio' = DIVIDE ( [Faturamento], [Pedidos (qtd)] )
+		formatString: \R$ #,0.00
+		displayFolder: Vendas
+		lineageTag: 3f1b25a8-267c-5a32-a047-d1ada720e3d5
+
+	/// Faturamento no mesmo período do ano anterior.
+	measure 'Faturamento ano anterior' = CALCULATE ( [Faturamento], SAMEPERIODLASTYEAR ( 'Calendário'[Data] ) )
+		formatString: \R$ #,0
+		displayFolder: Vendas
+		lineageTag: 18dd879b-ea7f-59e2-8012-14adf31b83ae
+
+	/// Variação do faturamento contra o mesmo período do ano anterior.
+	measure 'Crescimento anual %' = ```
+		VAR anterior = [Faturamento ano anterior]
+		RETURN IF ( NOT ISBLANK ( anterior ), DIVIDE ( [Faturamento] - anterior, anterior ) )
+		```
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: Vendas
+		lineageTag: fdce1a78-01c4-5ed5-9d17-13e1c5e78b89
+
+	/// Pedidos com status entregue.
+	measure 'Pedidos entregues' = CALCULATE ( [Pedidos (qtd)], Pedidos[Status] = "delivered" )
+		formatString: #,0
+		displayFolder: Entrega
+		lineageTag: 3ff6062e-be28-5d10-a3e4-7aed5a5a221d
+
+	/// Pedidos entregues num dia posterior à data prometida.
+	measure 'Pedidos atrasados' = CALCULATE ( [Pedidos (qtd)], Pedidos[Status] = "delivered", Pedidos[Atrasado] = TRUE () )
+		formatString: #,0
+		displayFolder: Entrega
+		lineageTag: a4b24def-32fd-51ae-a67f-7e54cb754c2b
+
+	/// Parcela dos pedidos entregues que chegou depois do dia prometido.
+	measure '% atrasados' = DIVIDE ( [Pedidos atrasados], [Pedidos entregues] )
+		formatString: 0.0%
+		displayFolder: Entrega
+		lineageTag: 8864bd04-c9ea-5414-9dfa-7457c1351140
+
+	/// Média de dias entre a compra e a entrega.
+	measure 'Dias médios até a entrega' = CALCULATE ( AVERAGE ( Pedidos[Dias até a entrega] ), Pedidos[Status] = "delivered" )
+		formatString: 0.0
+		displayFolder: Entrega
+		lineageTag: 13f3966a-dcf0-55ef-a51b-cabbd5b8f8b0
+
+	/// Média da nota de avaliação (1 a 5), última avaliação de cada pedido.
+	measure 'Nota média' = AVERAGE ( Pedidos[Nota] )
+		formatString: 0.00
+		displayFolder: Satisfação
+		lineageTag: 2971d0b3-90e3-588f-98de-52cf381c75ea
+
+	/// Nota média só dos pedidos entregues, base da análise de atraso.
+	measure 'Nota média (entregues)' = CALCULATE ( [Nota média], Pedidos[Status] = "delivered", NOT ISBLANK ( Pedidos[Dias de atraso] ) )
+		formatString: 0.00
+		displayFolder: Satisfação
+		lineageTag: 20a665ab-e6a3-55c0-9c1c-e5b5491b5e88
+
+	/// Parcela das avaliações com nota 1.
+	measure '% nota 1' = ```
+		DIVIDE (
+		    CALCULATE ( COUNTROWS ( Pedidos ), Pedidos[Nota] = 1 ),
+		    CALCULATE ( COUNTROWS ( Pedidos ), NOT ISBLANK ( Pedidos[Nota] ) )
+		)
+		```
+		formatString: 0.0%
+		displayFolder: Satisfação
+		lineageTag: 8dd00b31-5da9-55a9-866b-49e8378ae81e
+
+	/// Parcela de notas 1 entre os pedidos entregues.
+	measure '% nota 1 (entregues)' = CALCULATE ( [% nota 1], Pedidos[Status] = "delivered", NOT ISBLANK ( Pedidos[Dias de atraso] ) )
+		formatString: 0.0%
+		displayFolder: Satisfação
+		lineageTag: 177e4896-0bb2-582d-89cc-1160e39ab45c
+
+	/// Nota média dos pedidos entregues até o dia prometido.
+	measure 'Nota no prazo' = CALCULATE ( [Nota média], Pedidos[Status] = "delivered", Pedidos[Atrasado] = FALSE () )
+		formatString: 0.00
+		displayFolder: Satisfação
+		lineageTag: 9c1f671d-6875-5b1b-b6e3-7b9afd4477c8
+
+	/// Nota média dos pedidos entregues depois do dia prometido.
+	measure 'Nota com atraso' = CALCULATE ( [Nota média], Pedidos[Status] = "delivered", Pedidos[Atrasado] = TRUE () )
+		formatString: 0.00
+		displayFolder: Satisfação
+		lineageTag: 4aeb1baf-c8ad-5946-9997-73ede6b7af8f
+
+	/// Diferença de nota entre pedidos no prazo e atrasados.
+	measure 'Pontos perdidos no atraso' = [Nota no prazo] - [Nota com atraso]
+		formatString: 0.00
+		displayFolder: Satisfação
+		lineageTag: 7bc4cef4-5589-53e1-9ef2-bca9b9e79894
+
+	/// Soma do preço dos itens vendidos, sem frete.
+	measure 'Vendas (itens)' = SUM ( Itens[Preço] )
+		formatString: \R$ #,0
+		displayFolder: Categorias e vendedores
+		lineageTag: f54e0a77-aaed-5aa0-b0d4-62fea605432b
+
+	/// Pedidos que contêm ao menos um item da seleção.
+	measure 'Pedidos com o item' = DISTINCTCOUNT ( Itens[ID do pedido] )
+		formatString: #,0
+		displayFolder: Categorias e vendedores
+		lineageTag: 2134d4eb-3e00-5734-88a7-851ce5df7e21
+
+	/// Parcela dos pedidos entregues com itens da seleção que chegou atrasada.
+	measure '% atrasados (itens)' = ```
+		VAR entregues = CALCULATE ( DISTINCTCOUNT ( Itens[ID do pedido] ), Itens[Status] = "delivered" )
+		VAR atrasados = CALCULATE ( DISTINCTCOUNT ( Itens[ID do pedido] ), Itens[Status] = "delivered", Itens[Atrasado] = TRUE () )
+		RETURN DIVIDE ( atrasados, entregues )
+		```
+		formatString: 0.0%
+		displayFolder: Categorias e vendedores
+		lineageTag: 2c0ce8e1-b274-5be3-bd9b-eee277e2942e
+
+	/// Nota média por pedido que contém itens da seleção (cada pedido conta uma vez).
+	measure 'Nota média (itens)' = ```
+		AVERAGEX (
+		    VALUES ( Itens[ID do pedido] ),
+		    CALCULATE ( MAX ( Itens[Nota] ) )
+		)
+		```
+		formatString: 0.00
+		displayFolder: Categorias e vendedores
+		lineageTag: 31a14e30-1d27-55e1-b108-b71946d152d1
+
+	column Coluna
+		dataType: string
+		isHidden
+		lineageTag: 84397b0b-257a-565b-b095-b0b87962ecf4
+		summarizeBy: none
+		sourceColumn: [Coluna]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = calculated
+		mode: import
+		source = ROW ( "Coluna", "" )
+
+	annotation PBI_Id = medidas

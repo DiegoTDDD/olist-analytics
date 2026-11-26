@@ -1,0 +1,49 @@
+table Vendedores
+	lineageTag: d2105ff4-ca45-5340-8577-706ba36761d7
+
+	column 'ID do vendedor'
+		dataType: string
+		lineageTag: 472d1698-95e6-5a1a-a7da-0adb4592fdb5
+		summarizeBy: none
+		sourceColumn: seller_id
+
+		annotation SummarizationSetBy = User
+
+	column 'CEP (prefixo)'
+		dataType: string
+		lineageTag: 97823e19-755e-5f5c-be90-7538ce5b2d66
+		summarizeBy: none
+		sourceColumn: seller_zip_code_prefix
+
+		annotation SummarizationSetBy = User
+
+	column Cidade
+		dataType: string
+		lineageTag: 72ffdbb3-2370-5b94-8ec2-59b21f6e15db
+		summarizeBy: none
+		sourceColumn: seller_city
+
+		annotation SummarizationSetBy = User
+
+	column 'Estado do vendedor'
+		dataType: string
+		lineageTag: eefdb9b0-c2de-5a54-b687-72c00cd89315
+		summarizeBy: none
+		sourceColumn: seller_state
+		dataCategory: StateOrProvince
+
+		annotation SummarizationSetBy = User
+
+	partition Vendedores = m
+		mode: import
+		source =
+				let
+				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
+				        then Web.Contents ( DataFolder & "/dim_sellers.parquet" )
+				        else File.Contents ( DataFolder & "\dim_sellers.parquet" ),
+				    Fonte = Parquet.Document ( Arquivo ),
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"seller_id", type text}, {"seller_zip_code_prefix", type text}, {"seller_city", type text}, {"seller_state", type text}} )
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

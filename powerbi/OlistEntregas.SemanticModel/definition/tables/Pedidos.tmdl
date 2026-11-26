@@ -1,0 +1,161 @@
+table Pedidos
+	lineageTag: b97c8b10-1851-5592-b71d-00bc9140322c
+
+	column 'ID do pedido'
+		dataType: string
+		lineageTag: 73c7a0a8-6b0a-584d-aa1f-5745c538ab65
+		summarizeBy: none
+		sourceColumn: order_id
+
+		annotation SummarizationSetBy = User
+
+	column 'ID do cliente'
+		dataType: string
+		lineageTag: 7f8a1c0c-704a-5d98-bb3b-4b406a8a5a8a
+		summarizeBy: none
+		sourceColumn: customer_id
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column Status
+		dataType: string
+		lineageTag: 97dcf251-b957-5b86-be1b-7e6ab6e565b0
+		summarizeBy: none
+		sourceColumn: status
+
+		annotation SummarizationSetBy = User
+
+	column 'Data da compra'
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		lineageTag: d7d5d2b2-205b-5b82-99c0-e178782883c8
+		summarizeBy: none
+		sourceColumn: purchase_date
+
+		annotation SummarizationSetBy = User
+
+	column 'Valor pago'
+		dataType: decimal
+		formatString: \R$ #,0.00
+		lineageTag: a6e5195e-3ac3-57ff-85d8-126d50d4f297
+		summarizeBy: sum
+		sourceColumn: total_payment_value
+
+		annotation SummarizationSetBy = User
+
+	column Parcelas
+		dataType: int64
+		formatString: 0
+		lineageTag: 3b6d1caf-05a9-5159-b988-e1eedd8fa3db
+		summarizeBy: sum
+		sourceColumn: max_installments
+
+		annotation SummarizationSetBy = User
+
+	column Itens
+		dataType: int64
+		formatString: 0
+		lineageTag: de035419-8941-5ac1-becd-f6a9d0aab5b2
+		summarizeBy: sum
+		sourceColumn: item_count
+
+		annotation SummarizationSetBy = User
+
+	column 'Valor dos itens'
+		dataType: decimal
+		formatString: \R$ #,0.00
+		lineageTag: bc16bd3c-0897-5a7f-bbd4-03d9a8f63726
+		summarizeBy: sum
+		sourceColumn: total_item_price
+
+		annotation SummarizationSetBy = User
+
+	column Frete
+		dataType: decimal
+		formatString: \R$ #,0.00
+		lineageTag: 56835760-82a8-5b0c-be10-f78cf3ba0a42
+		summarizeBy: sum
+		sourceColumn: total_freight
+
+		annotation SummarizationSetBy = User
+
+	column Nota
+		dataType: int64
+		formatString: 0
+		lineageTag: 6a951d09-bf77-55ca-8c8f-d3bbd1513797
+		summarizeBy: sum
+		sourceColumn: review_score
+
+		annotation SummarizationSetBy = User
+
+	column 'Dias até a entrega'
+		dataType: int64
+		formatString: 0
+		lineageTag: f8ee7e5c-8aea-5e93-93e0-188a35a696e4
+		summarizeBy: sum
+		sourceColumn: delivery_days
+
+		annotation SummarizationSetBy = User
+
+	column 'Dias de atraso'
+		dataType: int64
+		formatString: 0
+		lineageTag: 0519c1b1-fee0-589c-bc99-05a4b58fb1c4
+		summarizeBy: sum
+		sourceColumn: delay_days
+
+		annotation SummarizationSetBy = User
+
+	column Atrasado
+		dataType: boolean
+		lineageTag: f2069ff9-7d71-560e-a8d9-67f2764b9677
+		summarizeBy: none
+		sourceColumn: is_delayed
+
+		annotation SummarizationSetBy = User
+
+	column 'Faixa de atraso' = ```
+		VAR d = Pedidos[Dias de atraso]
+		RETURN
+		    SWITCH (
+		        TRUE (),
+		        ISBLANK ( d ), "Não entregue",
+		        d <= 0, "No prazo",
+		        d >= 11, "11+ dias",
+		        d = 1, "1 dia",
+		        FORMAT ( d, "0" ) & " dias"
+		    )
+		```
+		dataType: string
+		lineageTag: c181b9d7-989b-5fef-9192-1f1882279f5b
+		summarizeBy: none
+		sortByColumn: 'Faixa ordem'
+
+		annotation SummarizationSetBy = User
+
+	column 'Faixa ordem' = ```
+		VAR d = Pedidos[Dias de atraso]
+		RETURN SWITCH ( TRUE (), ISBLANK ( d ), 99, d <= 0, 0, d >= 11, 11, d )
+		```
+		dataType: int64
+		formatString: 0
+		lineageTag: 766fd740-fc2e-5b1a-8ae2-26ea4e6ce24c
+		summarizeBy: none
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	partition Pedidos = m
+		mode: import
+		source =
+				let
+				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
+				        then Web.Contents ( DataFolder & "/fct_orders.parquet" )
+				        else File.Contents ( DataFolder & "\fct_orders.parquet" ),
+				    Fonte = Parquet.Document ( Arquivo ),
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"order_id", type text}, {"customer_id", type text}, {"status", type text}, {"purchase_date", type date}, {"total_payment_value", Currency.Type}, {"max_installments", Int64.Type}, {"item_count", Int64.Type}, {"total_item_price", Currency.Type}, {"total_freight", Currency.Type}, {"review_score", Int64.Type}, {"delivery_days", Int64.Type}, {"delay_days", Int64.Type}, {"is_delayed", type logical}} )
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

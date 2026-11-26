@@ -1,0 +1,114 @@
+table Itens
+	lineageTag: fe4b1bd4-9324-5b2b-9488-9a34068d8b47
+
+	column 'ID do pedido'
+		dataType: string
+		lineageTag: ca1beddf-0655-5b8f-933d-c82d19ee9d3e
+		summarizeBy: none
+		sourceColumn: order_id
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column Item
+		dataType: int64
+		formatString: 0
+		lineageTag: b486a38a-d369-5146-9854-2e79bffccdf4
+		summarizeBy: none
+		sourceColumn: order_item_id
+
+		annotation SummarizationSetBy = User
+
+	column 'ID do produto'
+		dataType: string
+		lineageTag: 4b71d3f9-0738-5359-b387-be733d3759ca
+		summarizeBy: none
+		sourceColumn: product_id
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'ID do vendedor'
+		dataType: string
+		lineageTag: b4275dd8-af66-5100-9233-096d90d4e007
+		summarizeBy: none
+		sourceColumn: seller_id
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column Status
+		dataType: string
+		lineageTag: 1f5bd2cf-5ae0-527d-9a8f-07089002ac8e
+		summarizeBy: none
+		sourceColumn: status
+
+		annotation SummarizationSetBy = User
+
+	column 'Data da compra'
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		lineageTag: cf447180-bcba-5896-af5b-add6e3b80731
+		summarizeBy: none
+		sourceColumn: purchase_date
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Preço'
+		dataType: decimal
+		formatString: \R$ #,0.00
+		lineageTag: 7c89b0ba-e84f-5d0d-b7bf-8249e7d3395f
+		summarizeBy: sum
+		sourceColumn: price
+
+		annotation SummarizationSetBy = User
+
+	column Frete
+		dataType: decimal
+		formatString: \R$ #,0.00
+		lineageTag: c86da96b-cb6f-5057-9600-0aad8a616d39
+		summarizeBy: sum
+		sourceColumn: freight_value
+
+		annotation SummarizationSetBy = User
+
+	column Atrasado
+		dataType: boolean
+		lineageTag: d95db961-e8b2-584b-80ab-237fbe5800ce
+		summarizeBy: none
+		sourceColumn: is_delayed
+
+		annotation SummarizationSetBy = User
+
+	column 'Dias de atraso'
+		dataType: int64
+		formatString: 0
+		lineageTag: 14c73a69-50cc-5ad1-aa42-da01a8967466
+		summarizeBy: sum
+		sourceColumn: delay_days
+
+		annotation SummarizationSetBy = User
+
+	column Nota
+		dataType: int64
+		formatString: 0
+		lineageTag: 014a94b5-57ab-513f-9cff-83f70f1ec27b
+		summarizeBy: sum
+		sourceColumn: review_score
+
+		annotation SummarizationSetBy = User
+
+	partition Itens = m
+		mode: import
+		source =
+				let
+				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
+				        then Web.Contents ( DataFolder & "/fct_order_items.parquet" )
+				        else File.Contents ( DataFolder & "\fct_order_items.parquet" ),
+				    Fonte = Parquet.Document ( Arquivo ),
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"order_id", type text}, {"order_item_id", Int64.Type}, {"product_id", type text}, {"seller_id", type text}, {"status", type text}, {"purchase_date", type date}, {"price", Currency.Type}, {"freight_value", Currency.Type}, {"is_delayed", type logical}, {"delay_days", Int64.Type}, {"review_score", Int64.Type}} )
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

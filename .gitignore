@@ -1,6 +1,10 @@
 .venv/
 data/*
 !data/marts/
+!data/powerbi/
+# Power BI Desktop's local files next to the project
+powerbi/**/.pbi/localSettings.json
+powerbi/**/.pbi/cache.abf
 __pycache__/
 .ipynb_checkpoints/
 logs/

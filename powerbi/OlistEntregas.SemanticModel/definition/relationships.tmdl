@@ -1,0 +1,19 @@
+relationship 9a50fc40-5a81-574e-8e19-813f63b898a3
+	fromColumn: Pedidos.'Data da compra'
+	toColumn: 'Calendário'.Data
+
+relationship 1bdc7932-9af3-5563-98bd-34eba6baee62
+	fromColumn: Pedidos.'ID do cliente'
+	toColumn: Clientes.'ID do cliente'
+
+relationship 76adc93c-ee8f-531f-98c9-9c0b52336a4d
+	fromColumn: Itens.'ID do pedido'
+	toColumn: Pedidos.'ID do pedido'
+
+relationship b8d98d8f-5771-540f-862e-ce7b0f76a806
+	fromColumn: Itens.'ID do produto'
+	toColumn: Produtos.'ID do produto'
+
+relationship bd92bb20-337e-5216-ae54-7f990f1436a8
+	fromColumn: Itens.'ID do vendedor'
+	toColumn: Vendedores.'ID do vendedor'

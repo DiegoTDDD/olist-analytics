@@ -1,0 +1,58 @@
+table Clientes
+	lineageTag: 852002ec-00f2-5507-8220-8415b28e0b97
+
+	column 'ID do cliente'
+		dataType: string
+		lineageTag: c2918ae9-ea03-5b30-a96c-454d2b4cde37
+		summarizeBy: none
+		sourceColumn: customer_id
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'ID único do cliente'
+		dataType: string
+		lineageTag: e8b4ba9b-2e3d-5295-b5eb-d8f317fb23a4
+		summarizeBy: none
+		sourceColumn: customer_unique_id
+
+		annotation SummarizationSetBy = User
+
+	column 'CEP (prefixo)'
+		dataType: string
+		lineageTag: e2ecac5c-ffee-5d87-a323-417889dbdc1e
+		summarizeBy: none
+		sourceColumn: customer_zip_code_prefix
+
+		annotation SummarizationSetBy = User
+
+	column Cidade
+		dataType: string
+		lineageTag: c3df5100-8ba8-5a50-b8b4-4e60bb62f427
+		summarizeBy: none
+		sourceColumn: customer_city
+
+		annotation SummarizationSetBy = User
+
+	column Estado
+		dataType: string
+		lineageTag: e92dac22-7a5d-58a0-a589-f09fadbd30c5
+		summarizeBy: none
+		sourceColumn: customer_state
+		dataCategory: StateOrProvince
+
+		annotation SummarizationSetBy = User
+
+	partition Clientes = m
+		mode: import
+		source =
+				let
+				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
+				        then Web.Contents ( DataFolder & "/dim_customers.parquet" )
+				        else File.Contents ( DataFolder & "\dim_customers.parquet" ),
+				    Fonte = Parquet.Document ( Arquivo ),
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"customer_id", type text}, {"customer_unique_id", type text}, {"customer_zip_code_prefix", type text}, {"customer_city", type text}, {"customer_state", type text}} )
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

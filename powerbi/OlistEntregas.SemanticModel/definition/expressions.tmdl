@@ -1,0 +1,5 @@
+/// Pasta local ou endereço web com os arquivos Parquet de export_powerbi.py (data/powerbi).
+expression DataFolder = "https://raw.githubusercontent.com/DiegoTDDD/olist-analytics/main/data/powerbi" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 56bcde78-92f8-5a76-894e-3948feb77590
+
+	annotation PBI_ResultType = Text

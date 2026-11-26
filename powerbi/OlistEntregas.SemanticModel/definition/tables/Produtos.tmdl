@@ -1,0 +1,100 @@
+table Produtos
+	lineageTag: 9888b6dd-46a6-56e1-94ea-80840c2cde4c
+
+	column 'ID do produto'
+		dataType: string
+		lineageTag: ded6b233-2ef8-56a1-a68b-625230c21c15
+		summarizeBy: none
+		sourceColumn: product_id
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Categoria original'
+		dataType: string
+		lineageTag: 199f8a74-69b9-5ffd-b98b-0a9fe0ba189d
+		summarizeBy: none
+		sourceColumn: product_category_name
+		isHidden
+
+		annotation SummarizationSetBy = User
+
+	column 'Categoria (inglês)'
+		dataType: string
+		lineageTag: 893b65f1-2d7e-5673-a08a-b30039c7d6e0
+		summarizeBy: none
+		sourceColumn: category_name_english
+
+		annotation SummarizationSetBy = User
+
+	column 'Peso (g)'
+		dataType: int64
+		formatString: #,0
+		lineageTag: 8b0fdfa5-e008-54a6-aa12-da556b2f8dae
+		summarizeBy: sum
+		sourceColumn: product_weight_g
+
+		annotation SummarizationSetBy = User
+
+	column 'Comprimento (cm)'
+		dataType: int64
+		formatString: 0
+		lineageTag: 1fdec4aa-4ad8-5db7-a7fa-712914795d29
+		summarizeBy: sum
+		sourceColumn: product_length_cm
+
+		annotation SummarizationSetBy = User
+
+	column 'Altura (cm)'
+		dataType: int64
+		formatString: 0
+		lineageTag: 4dcdbc68-0f4e-5f1d-8a97-38ad4c7954d8
+		summarizeBy: sum
+		sourceColumn: product_height_cm
+
+		annotation SummarizationSetBy = User
+
+	column 'Largura (cm)'
+		dataType: int64
+		formatString: 0
+		lineageTag: cd85b292-8775-5169-858f-738d0859a849
+		summarizeBy: sum
+		sourceColumn: product_width_cm
+
+		annotation SummarizationSetBy = User
+
+	column Fotos
+		dataType: int64
+		formatString: 0
+		lineageTag: 460e1d95-bc75-50b6-93cb-048edf8e5ca3
+		summarizeBy: sum
+		sourceColumn: product_photos_qty
+
+		annotation SummarizationSetBy = User
+
+	column Categoria = ```
+		IF (
+		    ISBLANK ( Produtos[Categoria original] ) || Produtos[Categoria original] = "",
+		    "sem categoria",
+		    SUBSTITUTE ( Produtos[Categoria original], "_", " " )
+		)
+		```
+		dataType: string
+		lineageTag: 5a834141-eeeb-54b3-9a1b-e789a2979a04
+		summarizeBy: none
+
+		annotation SummarizationSetBy = User
+
+	partition Produtos = m
+		mode: import
+		source =
+				let
+				    Arquivo = if Text.StartsWith ( DataFolder, "http" )
+				        then Web.Contents ( DataFolder & "/dim_products.parquet" )
+				        else File.Contents ( DataFolder & "\dim_products.parquet" ),
+				    Fonte = Parquet.Document ( Arquivo ),
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"product_id", type text}, {"product_category_name", type text}, {"category_name_english", type text}, {"product_weight_g", Int64.Type}, {"product_length_cm", Int64.Type}, {"product_height_cm", Int64.Type}, {"product_width_cm", Int64.Type}, {"product_photos_qty", Int64.Type}} )
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

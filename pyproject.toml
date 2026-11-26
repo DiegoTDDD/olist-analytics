@@ -18,5 +18,6 @@ ignore = ["E402", "ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/**" = ["ANN", "T20", "E501"]
+"powerbi/**" = ["ANN", "T20", "E501"]  # generator of the Power BI project
 "dashboard.py" = ["ANN", "T20", "E501"]
 "olist_dbt/models/staging/dashboard.py" = ["ANN"]

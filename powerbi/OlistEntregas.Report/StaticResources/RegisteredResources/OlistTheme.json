@@ -1,0 +1,37 @@
+{
+  "name": "Olist",
+  "dataColors": [
+    "#13233A",
+    "#0B7A70",
+    "#B45309",
+    "#4C6A92",
+    "#7FB8B1",
+    "#D89A5B",
+    "#9AA5B4"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#13233A",
+  "tableAccent": "#0B7A70",
+  "textClasses": {
+    "callout": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 26,
+      "color": "#13233A"
+    },
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#13233A"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#13233A"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 10,
+      "color": "#5B6676"
+    }
+  }
+}
