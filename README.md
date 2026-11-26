@@ -5,7 +5,7 @@
 
 **Problem.** An e-commerce marketplace knows that late deliveries hurt reviews. What it does not know is how much they hurt, how quickly, and whether operations should cut the size of delays or prevent them altogether.
 
-**Solution.** A tested star schema built with dbt on DuckDB over about 100,000 real Olist orders, a three-page Power BI report with 22 DAX measures on top of it, and a Streamlit dashboard.
+**Solution.** A tested star schema built with dbt on DuckDB over about 100,000 real Olist orders, a three-page Power BI report with 23 DAX measures on top of it, and a Streamlit dashboard.
 
 **📊 Power BI:** [download `OlistEntregas.pbix`](https://github.com/DiegoTDDD/olist-analytics/raw/main/powerbi/OlistEntregas.pbix) or open [`powerbi/OlistEntregas.pbip`](powerbi/) · **🔗 Live dashboard:** https://diegotddd-olist-analytics.streamlit.app · **Design decisions:** [`docs/adr/`](docs/adr/README.md)
 
@@ -27,7 +27,7 @@ The business implication: logistics money pays off inside the first week of a de
 
 ## Power BI report
 
-Three pages on the same star schema, in Portuguese, generated as code: [`powerbi/build_pbip.py`](powerbi/build_pbip.py) writes the semantic model (TMDL: tables, relationships, a marked date table, 22 DAX measures) and the report pages (PBIR), and the texts on the pages are computed from the data. CI regenerates the project and fails if it differs from the committed one.
+Three pages on the same star schema, in Portuguese, generated as code: [`powerbi/build_pbip.py`](powerbi/build_pbip.py) writes the semantic model (TMDL: tables, relationships, a marked date table, 23 DAX measures) and the report pages (PBIR), and the texts on the pages are computed from the data. CI regenerates the project and fails if it differs from the committed one.
 
 ![Power BI: overview with revenue, orders, ticket, late deliveries and rating](images/powerbi-overview.png)
 

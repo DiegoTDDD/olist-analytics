@@ -205,6 +205,11 @@ MEASURES = [
     ("Nota média (itens)",
      "AVERAGEX (\n    VALUES ( Itens[ID do pedido] ),\n    CALCULATE ( MAX ( Itens[Nota] ) )\n)", "0.00",
      "Categorias e vendedores", "Nota média por pedido que contém itens da seleção (cada pedido conta uma vez)."),
+    ("% atrasados (100+ pedidos)",
+     'VAR entregues = CALCULATE ( DISTINCTCOUNT ( Itens[ID do pedido] ), Itens[Status] = "delivered" )\n'
+     "RETURN IF ( entregues >= 100, [% atrasados (itens)] )",
+     "0.0%", "Categorias e vendedores",
+     "% atrasados (itens) só onde há ao menos 100 pedidos entregues: com menos, a taxa é ruído."),
 ]  # fmt: skip
 
 RELATIONSHIPS = [
@@ -619,14 +624,16 @@ def build_pages(stats: dict) -> list[Page]:
              sort=("Measure", "Medidas", "Vendas (itens)", "Descending"),
              objects={"values": [{"properties": {"fontSize": lit(10.0)}}],
                       "columnHeaders": [{"properties": {"fontSize": lit(10.0), "fontColor": color(MUTED)}}]})  # fmt: skip
-    p3.chart("sellers", 556, 434, 700, 270, "scatterChart",
-             "Estado do vendedor: pedidos (horizontal) e entregas atrasadas (vertical)",
-             {"Category": [C("Vendedores", "Estado do vendedor")], "X": [M("Pedidos com o item", "Pedidos")],
-              "Y": [M("% atrasados (itens)", "Atrasados")]},
-             objects={"dataPoint": [{"properties": {"fill": color(TEAL)}}],
-                      "categoryAxis": [{"properties": {"labelColor": color(MUTED), "labelDisplayUnits": lit(1.0)}}],
-                      "valueAxis": [{"properties": {"labelColor": color(MUTED)}}],
-                      "categoryLabels": [{"properties": {"show": lit(True), "color": color(INK)}}]})  # fmt: skip
+    # Seller states as bars: São Paulo has ~70k orders, which squeezed every other state into one corner
+    # of a scatter. States with under 100 delivered orders (AM has 3) are left out.
+    sellers_objects = axis_objects("#9CCFC9")
+    sellers_objects["labels"][0]["properties"].update(
+        {"labelPosition": lit("InsideEnd"), "labelDensity": lit(100.0), "labelPrecision": lit(1)})
+    p3.chart("sellers", 556, 434, 700, 270, "clusteredBarChart",
+             "Entregas atrasadas por estado do vendedor (estados com 100+ pedidos)",
+             {"Category": [C("Vendedores", "Estado do vendedor")], "Y": [M("% atrasados (100+ pedidos)", "Atrasados")],
+              "Tooltips": [M("Pedidos com o item", "Pedidos")]},
+             sort=("Measure", "Medidas", "% atrasados (100+ pedidos)", "Descending"), objects=sellers_objects)
     return [p1, p2, p3]
 
 

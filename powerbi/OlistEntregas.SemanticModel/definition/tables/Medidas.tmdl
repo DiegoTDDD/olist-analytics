@@ -156,6 +156,15 @@ table Medidas
 		displayFolder: Categorias e vendedores
 		lineageTag: 31a14e30-1d27-55e1-b108-b71946d152d1
 
+	/// % atrasados (itens) só onde há ao menos 100 pedidos entregues: com menos, a taxa é ruído.
+	measure '% atrasados (100+ pedidos)' = ```
+		VAR entregues = CALCULATE ( DISTINCTCOUNT ( Itens[ID do pedido] ), Itens[Status] = "delivered" )
+		RETURN IF ( entregues >= 100, [% atrasados (itens)] )
+		```
+		formatString: 0.0%
+		displayFolder: Categorias e vendedores
+		lineageTag: 8d231cc8-93c0-58e3-a844-27905c131ea5
+
 	column Coluna
 		dataType: string
 		isHidden
