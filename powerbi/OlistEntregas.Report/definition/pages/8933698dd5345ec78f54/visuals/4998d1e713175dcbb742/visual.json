@@ -78,7 +78,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#13233A'"
+                      "Value": "'#9FB8D6'"
                     }
                   }
                 }
@@ -112,6 +112,13 @@
               "expr": {
                 "Literal": {
                   "Value": "false"
+                }
+              }
+            },
+            "maxMarginFactor": {
+              "expr": {
+                "Literal": {
+                  "Value": "45.0D"
                 }
               }
             }
@@ -178,7 +185,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#F3F5F7'"
+                      "Value": "'#13233A'"
                     }
                   }
                 }
@@ -209,6 +216,13 @@
               "expr": {
                 "Literal": {
                   "Value": "100.0D"
+                }
+              }
+            },
+            "labelPrecision": {
+              "expr": {
+                "Literal": {
+                  "Value": "2L"
                 }
               }
             }

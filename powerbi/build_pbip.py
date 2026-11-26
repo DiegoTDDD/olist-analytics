@@ -604,10 +604,11 @@ def build_pages(stats: dict) -> list[Page]:
         ("Vendas sem frete por categoria de produto, e atraso e nota medidos por pedido que contém o item.\n",
          "10pt", MUTED, False),
     ])
-    # Labels inside the bar end: an outside label on the longest bar has no room and Power BI drops it.
-    cats_objects = axis_objects(NAVY)
-    cats_objects["labels"][0]["properties"].update(
-        {"labelPosition": lit("InsideEnd"), "color": color(PAPER), "labelDensity": lit(100.0)})
+    # Light bars with dark labels at the bar end: the longest bar keeps its value (an outside label has
+    # no room there and Power BI drops it), and labels that spill past a short bar stay readable.
+    cats_objects = axis_objects("#9FB8D6")
+    cats_objects["labels"][0]["properties"].update({"labelPosition": lit("InsideEnd"), "labelDensity": lit(100.0), "labelPrecision": lit(2)})
+    cats_objects["categoryAxis"][0]["properties"]["maxMarginFactor"] = lit(45.0)
     p3.chart("cats", 24, 92, 520, 612, "clusteredBarChart", "Vendas por categoria",
              {"Category": [C("Produtos", "Categoria")], "Y": [M("Vendas (itens)")]},
              sort=("Measure", "Medidas", "Vendas (itens)", "Descending"), objects=cats_objects)
