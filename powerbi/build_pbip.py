@@ -88,6 +88,7 @@ TABLES = {
     "Produtos": ("dim_products", [
         ("ID do produto", "product_id", "string", None, {"isHidden": True}),
         ("Categoria original", "product_category_name", "string", None, {"isHidden": True}),
+        ("Categoria", "category_name_pt", "string", None, {}),
         ("Categoria (inglês)", "category_name_english", "string", None, {}),
         ("Peso (g)", "product_weight_g", "int64", "#,0", {}),
         ("Comprimento (cm)", "product_length_cm", "int64", "0", {}),
@@ -135,14 +136,6 @@ RETURN
 VAR d = Pedidos[Dias de atraso]
 RETURN SWITCH ( TRUE (), ISBLANK ( d ), 99, d <= 0, 0, d >= 11, 11, d )""", "int64", "0",
          {"isHidden": True, "summarizeBy": "none"}),
-    ],
-    "Produtos": [
-        ("Categoria", """
-IF (
-    ISBLANK ( Produtos[Categoria original] ) || Produtos[Categoria original] = "",
-    "sem categoria",
-    SUBSTITUTE ( Produtos[Categoria original], "_", " " )
-)""", "string", None, {}),
     ],
     "Calendário": [
         ("Ano-mês", "'Calendário'[Ano] * 100 + 'Calendário'[Mês nº]", "int64", "0",
@@ -611,10 +604,10 @@ def build_pages(stats: dict) -> list[Page]:
         ("Vendas sem frete por categoria de produto, e atraso e nota medidos por pedido que contém o item.\n",
          "10pt", MUTED, False),
     ])
-    # Room after the longest bar for its label (the data is a fixed snapshot; largest is about R$ 1.26 Mi).
+    # Labels inside the bar end: an outside label on the longest bar has no room and Power BI drops it.
     cats_objects = axis_objects(NAVY)
-    cats_objects["valueAxis"][0]["properties"].update({"end": lit(1500000.0), "start": lit(0.0)})
-    cats_objects["labels"][0]["properties"]["labelDensity"] = lit(100.0)
+    cats_objects["labels"][0]["properties"].update(
+        {"labelPosition": lit("InsideEnd"), "color": color(PAPER), "labelDensity": lit(100.0)})
     p3.chart("cats", 24, 92, 520, 612, "clusteredBarChart", "Vendas por categoria",
              {"Category": [C("Produtos", "Categoria")], "Y": [M("Vendas (itens)")]},
              sort=("Measure", "Medidas", "Vendas (itens)", "Descending"), objects=cats_objects)

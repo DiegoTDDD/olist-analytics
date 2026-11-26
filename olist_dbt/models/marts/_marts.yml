@@ -44,6 +44,10 @@ models:
         tests:
           - unique
           - not_null
+      - name: category_name_pt
+        description: "Fails when a category has no Portuguese name in the category_names_pt seed"
+        tests:
+          - not_null
 
   - name: dim_sellers
     columns:

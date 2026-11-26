@@ -1,0 +1,13 @@
+version: 2
+
+seeds:
+  - name: category_names_pt
+    description: "Display name in Portuguese, with accents, for each Olist product category"
+    columns:
+      - name: product_category_name
+        tests:
+          - unique
+          - not_null
+      - name: category_name_pt
+        tests:
+          - not_null

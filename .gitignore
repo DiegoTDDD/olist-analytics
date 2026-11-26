@@ -12,6 +12,7 @@ olist_dbt/dbt_packages/
 olist_dbt/target/
 olist_dbt/logs/
 *.csv
+!olist_dbt/seeds/*.csv
 
 # Segredos: nunca versionar
 .env

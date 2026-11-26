@@ -23,7 +23,7 @@
 
 The business implication: logistics money pays off inside the first week of a delay. Turning a 3-day delay into a 1-day one recovers about one point of rating; turning a 20-day delay into a 12-day one recovers almost none. The orders that just missed their date are the ones to rescue first. This is correlation in observational data: late orders may differ in other ways.
 
-**Model quality:** 15 dbt models and 43 tests, run on every change from the raw files, including seven singular tests for the business rules ([below](#data-quality-tests)).
+**Model quality:** 15 dbt models and 47 tests, run on every change from the raw files, including seven singular tests for the business rules ([below](#data-quality-tests)).
 
 ## Power BI report
 
@@ -74,10 +74,11 @@ The `delay_days` measure (actual delivery date minus the estimated date) is the 
 
 ## Data quality tests
 
-`dbt build` runs 43 tests before anything is published:
+`dbt build` runs 47 tests before anything is published:
 
 - **Sources (17):** unique and not-null primary keys on orders, customers, products, sellers and category translations; order items that point at real orders; review scores between 1 and 5. The CSV files themselves are checked against pinned SHA-256 hashes.
-- **Models (19):** unique and not-null keys on every dimension and on the order fact, the relationship from `fct_orders` to `dim_customers`, review scores between 1 and 5, and the relationships from every item in `fct_order_items` to its order, product and seller.
+- **Models (20):** unique and not-null keys on every dimension and on the order fact, the relationship from `fct_orders` to `dim_customers`, review scores between 1 and 5, the relationships from every item in `fct_order_items` to its order, product and seller, and a Portuguese display name for every product category.
+- **Seed (3):** `category_names_pt`, the category names shown in the Power BI report (with accents), has one row per category.
 - **Business rules (7 singular tests in `olist_dbt/tests/`):**
   - exactly one fact row per order, so no join duplicates or drops orders;
   - `is_delayed` agrees with `delay_days > 0`;
@@ -138,6 +139,7 @@ olist-analytics/
 ├── olist_dbt/
 │   ├── dbt_project.yml
 │   ├── profiles.yml        # connection profile (no ~/.dbt setup needed)
+│   ├── seeds/              # Portuguese category names for the Power BI report
 │   ├── tests/              # singular tests for the business rules
 │   └── models/
 │       ├── staging/        # Cleaned source views (stg_*) and source tests
@@ -190,7 +192,7 @@ The dashboard only needs step 1 (with `requirements.txt`) and the committed `dat
 
 ## Automated checks
 
-- **dbt check** (`dbt-check.yml`) runs on every change to the models, scripts or export. It downloads and verifies the nine CSV files, loads them, runs `dbt build` (15 models and 43 tests), rebuilds the exports and the Power BI project and fails if any differs from the committed one, renders the dashboard, and builds the dbt documentation (downloadable from each run).
+- **dbt check** (`dbt-check.yml`) runs on every change to the models, scripts or export. It downloads and verifies the nine CSV files, loads them, runs `dbt build` (15 models and 47 tests), rebuilds the exports and the Power BI project and fails if any differs from the committed one, renders the dashboard, and builds the dbt documentation (downloadable from each run).
 - **Windows check** (`windows-check.yml`) installs and smoke-tests the project on Windows.
 - **Security audit** (`security-audit.yml`) audits every `requirements*.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
 - **App health** (`app-health.yml`) opens the [live app](https://diegotddd-olist-analytics.streamlit.app) in a real browser after each push and once a day (waking it if it was asleep) and fails if the app shows an error.

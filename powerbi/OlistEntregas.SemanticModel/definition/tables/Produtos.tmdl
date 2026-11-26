@@ -19,6 +19,14 @@ table Produtos
 
 		annotation SummarizationSetBy = User
 
+	column Categoria
+		dataType: string
+		lineageTag: a862e73a-2bdf-56ec-8341-74acdc14f5b9
+		summarizeBy: none
+		sourceColumn: category_name_pt
+
+		annotation SummarizationSetBy = User
+
 	column 'Categoria (inglês)'
 		dataType: string
 		lineageTag: 893b65f1-2d7e-5673-a08a-b30039c7d6e0
@@ -72,19 +80,6 @@ table Produtos
 
 		annotation SummarizationSetBy = User
 
-	column Categoria = ```
-		IF (
-		    ISBLANK ( Produtos[Categoria original] ) || Produtos[Categoria original] = "",
-		    "sem categoria",
-		    SUBSTITUTE ( Produtos[Categoria original], "_", " " )
-		)
-		```
-		dataType: string
-		lineageTag: 5a834141-eeeb-54b3-9a1b-e789a2979a04
-		summarizeBy: none
-
-		annotation SummarizationSetBy = User
-
 	partition Produtos = m
 		mode: import
 		source =
@@ -93,7 +88,7 @@ table Produtos
 				        then Binary.Buffer ( Web.Contents ( DataFolder & "/dim_products.parquet" ) )
 				        else File.Contents ( DataFolder & "\dim_products.parquet" ),
 				    Fonte = Parquet.Document ( Arquivo ),
-				    Tipos = Table.TransformColumnTypes ( Fonte, {{"product_id", type text}, {"product_category_name", type text}, {"category_name_english", type text}, {"product_weight_g", Int64.Type}, {"product_length_cm", Int64.Type}, {"product_height_cm", Int64.Type}, {"product_width_cm", Int64.Type}, {"product_photos_qty", Int64.Type}} )
+				    Tipos = Table.TransformColumnTypes ( Fonte, {{"product_id", type text}, {"product_category_name", type text}, {"category_name_pt", type text}, {"category_name_english", type text}, {"product_weight_g", Int64.Type}, {"product_length_cm", Int64.Type}, {"product_height_cm", Int64.Type}, {"product_width_cm", Int64.Type}, {"product_photos_qty", Int64.Type}} )
 				in
 				    Tipos
 
