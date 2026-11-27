@@ -10,8 +10,15 @@ st.set_page_config(page_title="Olist Analytics", layout="wide")
 FCT_ORDERS = Path(__file__).resolve().parent / "data" / "marts" / "fct_orders.parquet"
 
 
-@st.cache_data
 def load(query):
+    return _query(query, FCT_ORDERS.stat().st_mtime)
+
+
+# Streamlit Cloud updates a running app in place on a push and keeps cached results whose
+# function code did not change; the file's modification time in the arguments makes a new
+# committed file replace the cached one.
+@st.cache_data
+def _query(query, mtime):
     con = duckdb.connect()
     con.execute(f"CREATE VIEW fct_orders AS SELECT * FROM read_parquet('{FCT_ORDERS.as_posix()}')")
     df = con.execute(query).fetchdf()
