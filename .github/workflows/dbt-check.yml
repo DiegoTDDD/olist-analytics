@@ -2,7 +2,8 @@ name: dbt check
 
 # Builds everything from the raw files, the way the README does: downloads the nine CSV files
 # (checked against pinned SHA-256 hashes), loads them with load_data.py, runs `dbt build`
-# (15 models and 47 tests), exports fct_orders and checks it equals the committed export the
+# (15 models and 47 tests), checks source freshness (and that it fails on stale data), replays the
+# feed day by day to prove the incremental models equal a full rebuild, exports fct_orders and checks it equals the committed export the
 # dashboard reads, then starts the dashboard. It also builds the dbt documentation (lineage graph,
 # column descriptions, tests) as a downloadable artifact, and publishes it to GitHub Pages once
 # Pages is enabled (Settings > Pages > Source: GitHub Actions, then set the repository variable
@@ -20,6 +21,7 @@ on:
       - "powerbi/**"
       - pyproject.toml
       - "scripts/**"
+      - "tests/**"
       - "requirements*.txt"
       - ".github/workflows/dbt-check.yml"
   workflow_dispatch:
@@ -30,7 +32,7 @@ permissions:
 jobs:
   dbt:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -44,11 +46,14 @@ jobs:
       - name: Install the dashboard and dbt requirements
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dbt.txt ruff
+          pip install -r requirements-dbt.txt ruff pytest
           pip check
 
       - name: Lint the Python code
         run: ruff check .
+
+      - name: Unit tests (the replay load)
+        run: pytest -q
 
       - name: "README step 1: download and verify the nine CSV files"
         run: scripts/download_data.sh
@@ -59,6 +64,19 @@ jobs:
       - name: "README step 4: dbt build (models + tests)"
         working-directory: olist_dbt
         run: dbt build
+
+      - name: "Source freshness: passes on this load, fails on a load stamped three days ago"
+        run: |
+          (cd olist_dbt && dbt source freshness)
+          stale=$(python -c "import datetime as d; print((d.datetime.now(d.UTC) - d.timedelta(days=3)).isoformat())")
+          OLIST_DUCKDB=/tmp/stale.duckdb python load_data.py --loaded-at "$stale"
+          if (cd olist_dbt && OLIST_DUCKDB=/tmp/stale.duckdb dbt source freshness); then
+            echo "freshness passed on three-day-old data"; exit 1
+          fi
+          echo "freshness failed on three-day-old data, as it should"
+
+      - name: "Incremental models equal a full rebuild at every step of a replay"
+        run: python scripts/check_incremental.py
 
       - name: "README step 5: export fct_orders; it must equal the committed export"
         run: |

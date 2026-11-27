@@ -4,6 +4,10 @@ models:
   - name: fct_orders
     description: "One row per order with delivery, payment, and satisfaction measures"
     columns:
+      - name: source_updated_at
+        description: "When the order last changed (latest of its events and review answers); the incremental watermark, not exported"
+        tests:
+          - not_null
       - name: order_id
         description: "Unique identifier for each order"
         tests:

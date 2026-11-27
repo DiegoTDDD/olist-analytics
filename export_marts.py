@@ -25,7 +25,9 @@ def export(database: Path = DATABASE, target: Path = EXPORT) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(database), read_only=True)
     con.execute(
-        f"COPY (SELECT * FROM fct_orders ORDER BY order_id) TO '{target.as_posix()}' "
+        # source_updated_at is the incremental models' watermark, not something to report.
+        "COPY (SELECT * EXCLUDE (source_updated_at) FROM fct_orders ORDER BY order_id) "
+        f"TO '{target.as_posix()}' "
         "(FORMAT PARQUET, COMPRESSION ZSTD)"
     )
     rows = con.execute(f"SELECT COUNT(*) FROM '{target.as_posix()}'").fetchone()[0]

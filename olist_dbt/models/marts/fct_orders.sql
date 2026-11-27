@@ -1,5 +1,48 @@
-with orders as (
-    select * from {{ ref('stg_orders') }}
+{{
+    config(
+        materialized='incremental',
+        incremental_strategy='delete+insert',
+        unique_key='order_id',
+        on_schema_change='fail'
+    )
+}}
+
+-- Incremental: a run rebuilds only the orders with an event newer than this table's watermark
+-- (minus a lookback for late-arriving rows), replacing their rows. scripts/check_incremental.py
+-- proves in CI that the result equals a full rebuild at every step of a day-by-day replay
+-- (docs/adr/0006).
+{% set lookback_days = 3 %}
+
+with latest_answer as (
+    select order_id, max(review_answer_timestamp) as answered_at
+    from {{ ref('stg_order_reviews') }}
+    group by order_id
+),
+
+order_events as (
+    -- When each order last changed: its own timestamps and its latest review answer.
+    select
+        orders.order_id,
+        greatest(
+            orders.purchased_at,
+            orders.approved_at,
+            orders.delivered_to_carrier_at,
+            orders.delivered_to_customer_at,
+            latest_answer.answered_at
+        ) as source_updated_at
+    from {{ ref('stg_orders') }} as orders
+    left join latest_answer on orders.order_id = latest_answer.order_id
+),
+
+orders as (
+    select orders.*, order_events.source_updated_at
+    from {{ ref('stg_orders') }} as orders
+    inner join order_events on orders.order_id = order_events.order_id
+    {% if is_incremental() %}
+    where order_events.source_updated_at > (
+        select max(source_updated_at) - interval {{ lookback_days }} day from {{ this }}
+    )
+    {% endif %}
 ),
 
 reviews as (
@@ -63,7 +106,10 @@ select
     coalesce(
         cast(orders.delivered_to_customer_at as date) > cast(orders.estimated_delivery_at as date),
         false
-    ) as is_delayed
+    ) as is_delayed,
+
+    -- The watermark for incremental runs; not exported (export_marts.py, export_powerbi.py).
+    orders.source_updated_at
 
 from orders
 left join reviews   on orders.order_id = reviews.order_id

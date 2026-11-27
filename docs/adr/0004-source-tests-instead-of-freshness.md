@@ -1,6 +1,6 @@
 # 0004. Source tests instead of freshness checks for a static snapshot
 
-**Status:** Accepted
+**Status:** Superseded by [0006](0006-incremental-facts-and-freshness-on-a-replayed-feed.md): the feed is now replayed day by day, and the sources have freshness checks. The source tests below remain.
 
 ## Context
 dbt's source freshness compares the newest timestamp in a source with the current time. The Olist dataset is a fixed historical extract (2016 to 2018) and will never be refreshed, so any threshold would either always fail or be set so high that it checks nothing.

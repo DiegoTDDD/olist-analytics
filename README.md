@@ -23,7 +23,7 @@
 
 The business implication: logistics money pays off inside the first week of a delay. Turning a 3-day delay into a 1-day one recovers about one point of rating; turning a 20-day delay into a 12-day one recovers almost none. The orders that just missed their date are the ones to rescue first. This is correlation in observational data: late orders may differ in other ways.
 
-**Model quality:** 15 dbt models and 47 tests, run on every change from the raw files, including seven singular tests for the business rules ([below](#data-quality-tests)).
+**Model quality:** 15 dbt models and 48 tests, run on every change from the raw files, including seven singular tests for the business rules ([below](#data-quality-tests)). The two fact tables are incremental, and CI replays the order feed day by day to prove they equal a full rebuild at every step ([below](#incremental-models-and-freshness)).
 
 ## Power BI report
 
@@ -63,21 +63,21 @@ The project follows a layered dbt architecture and a star schema.
 
 **Marts layer** — a star schema:
 
-- `fct_orders` — one row per order, with measures: order value, payment installments, item count, freight, review score, delivery days, delay days, and an `is_delayed` flag (delivered on a later calendar day than promised; [ADR 0003](docs/adr/0003-late-means-a-later-calendar-day.md)). The review score uses the most recent review per order (via a window function) to avoid averaging multiple reviews into fractional scores.
+- `fct_orders` — incremental; one row per order, with measures: order value, payment installments, item count, freight, review score, delivery days, delay days, and an `is_delayed` flag (delivered on a later calendar day than promised; [ADR 0003](docs/adr/0003-late-means-a-later-calendar-day.md)). The review score uses the most recent review per order (via a window function) to avoid averaging multiple reviews into fractional scores.
 - `dim_customers` — customer identity and location (preserving both `customer_id` per order and `customer_unique_id` per person).
 - `dim_products` — product attributes joined to the English category translation.
 - `dim_sellers` — seller identity and location.
-- `fct_order_items` — one row per item sold, with the order's status, date, delay and review carried on it, for category and seller analysis.
+- `fct_order_items` — incremental; one row per item sold, with the order's status, date, delay and review carried on it, for category and seller analysis.
 - `dim_dates` — a date spine with year, quarter, month, day of week, and weekend flag.
 
 The `delay_days` measure (actual delivery date minus the estimated date) is the metric that links operations to customer satisfaction.
 
 ## Data quality tests
 
-`dbt build` runs 47 tests before anything is published:
+`dbt build` runs 48 tests before anything is published:
 
 - **Sources (17):** unique and not-null primary keys on orders, customers, products, sellers and category translations; order items that point at real orders; review scores between 1 and 5. The CSV files themselves are checked against pinned SHA-256 hashes.
-- **Models (20):** unique and not-null keys on every dimension and on the order fact, the relationship from `fct_orders` to `dim_customers`, review scores between 1 and 5, the relationships from every item in `fct_order_items` to its order, product and seller, and a Portuguese display name for every product category.
+- **Models (21):** unique and not-null keys on every dimension and on the order fact, a watermark on every order for the incremental runs, the relationship from `fct_orders` to `dim_customers`, review scores between 1 and 5, the relationships from every item in `fct_order_items` to its order, product and seller, and a Portuguese display name for every product category.
 - **Seed (3):** `category_names_pt`, the category names shown in the Power BI report (with accents), has one row per category.
 - **Business rules (7 singular tests in `olist_dbt/tests/`):**
   - exactly one fact row per order, so no join duplicates or drops orders;
@@ -93,7 +93,34 @@ The tests have caught two real bugs:
 - **Averaging multiple reviews produced fractional scores.** Fixed by keeping the most recent review ([ADR 0002](docs/adr/0002-latest-review-per-order.md)).
 - **`is_delayed` compared timestamps against a promise stored as midnight.** That flagged 1,292 orders delivered on the promised day as late and inflated the dashboard's "% delayed" from 6.6% to 7.9% ([ADR 0003](docs/adr/0003-late-means-a-later-calendar-day.md)).
 
-There is no source freshness check, because this is a fixed historical snapshot ([ADR 0004](docs/adr/0004-source-tests-instead-of-freshness.md)).
+## Incremental models and freshness
+
+The Olist files are one 2016-2018 extract, but they record when everything happened: purchase,
+approval, hand-over to the carrier, delivery and each review's answer. `load_data.py --as-of DATE`
+uses that to load the data as it was known at the end of any day, so the feed can be replayed the
+way a warehouse receives it ([ADR 0006](docs/adr/0006-incremental-facts-and-freshness-on-a-replayed-feed.md)).
+
+- **Incremental facts.** `fct_orders` and `fct_order_items` rebuild only the orders whose latest
+  event is newer than the table's watermark (minus a 3-day lookback for late rows) and replace
+  their rows. `dbt build --full-refresh` rebuilds everything.
+- **Proof.** [`scripts/check_incremental.py`](scripts/check_incremental.py) replays the feed and,
+  at every step, compares the incremental tables with a full rebuild of the same data, row for
+  row; CI fails on any difference. Breaking the watermark on purpose makes it fail.
+
+| Replay step | Orders in `fct_orders` | Orders reprocessed | Incremental = full rebuild |
+|---|---:|---:|---|
+| 2017-03-31 (first build) | 5,591 | all | yes |
+| 2017-09-30 | 27,582 | 23,713 | yes |
+| 2017-12-31 | 45,430 | 20,451 | yes |
+| 2018-04-30 | 73,577 | 31,983 | yes |
+| 2018-08-14 | 96,953 | 27,672 | yes |
+| 2018-08-15 (one day later) | 97,241 | 3,390 (that day plus the 3-day lookback) | yes |
+| 2018-09-15 | 99,432 | 6,351 | yes |
+| Full extract | 99,441 | 112 | yes |
+
+- **Freshness.** Every raw table carries `_loaded_at`. The sources warn after 26 hours without a
+  load and fail after 50 (a daily feed may miss one run). CI runs `dbt source freshness` on its
+  own load, which passes, and on a load stamped three days old, which must fail.
 
 ## Design decisions
 
@@ -102,13 +129,13 @@ There is no source freshness check, because this is a fixed historical snapshot 
 | [Star schema in dbt on DuckDB](docs/adr/0001-star-schema-in-dbt-on-duckdb.md) | Reusable for new questions, tested, and builds in seconds |
 | [Most recent review per order](docs/adr/0002-latest-review-per-order.md) | A score a customer actually gave |
 | [Late = a later calendar day](docs/adr/0003-late-means-a-later-calendar-day.md) | The promise is a date, not a time |
-| [Source tests, not freshness](docs/adr/0004-source-tests-instead-of-freshness.md) | The data never refreshes |
+| [Incremental facts and freshness on a replayed feed](docs/adr/0006-incremental-facts-and-freshness-on-a-replayed-feed.md) | Daily runs touch only the orders that changed, proven equal to a full rebuild; a stopped feed fails (replaces [0004](docs/adr/0004-source-tests-instead-of-freshness.md)) |
 | [Build the database; commit only a Parquet export](docs/adr/0005-database-built-not-versioned.md) | 4.6 MB instead of 46 MB per rebuild, and CI proves the export matches the code |
 
 ## Limitations
 
 - **Association, not causation.** Late orders get worse reviews, but some third factor, such as a remote region or a bad seller, could drive both. A causal estimate would need matching on those factors.
-- **One snapshot, 2016 to 2018.** No freshness monitoring and no incremental models.
+- **One extract, 2016 to 2018, replayed.** The daily feed is rebuilt from the event times in the data; canceled, unavailable, invoiced and processing orders have no event time, so the replay gives them their final status from purchase.
 - **Reviews are optional.** Orders without a review are left out of the score averages.
 
 ## Tech stack
@@ -124,7 +151,7 @@ There is no source freshness check, because this is a fixed historical snapshot 
 
 ```
 olist-analytics/
-├── load_data.py            # Loads the raw CSVs into DuckDB
+├── load_data.py            # Loads the raw CSVs into DuckDB (in full, or --as-of a day)
 ├── export_marts.py         # fct_orders -> data/marts/fct_orders.parquet for the dashboard
 ├── export_powerbi.py       # the six star-schema tables -> data/powerbi/*.parquet
 ├── powerbi/                # Power BI project (OlistEntregas.pbip) and its generator, build_pbip.py
@@ -134,6 +161,7 @@ olist-analytics/
 ├── scripts/
 │   ├── download_data.sh    # downloads the nine CSV files and checks their SHA-256
 │   ├── olist_csv.sha256
+│   ├── check_incremental.py # replay: incremental models == full rebuild at every step
 │   ├── explore.py          # quick data integrity checks
 │   └── analysis.py         # delivery vs. satisfaction analysis
 ├── olist_dbt/
@@ -144,6 +172,7 @@ olist-analytics/
 │   └── models/
 │       ├── staging/        # Cleaned source views (stg_*) and source tests
 │       └── marts/          # Dimensional model (fct_*, dim_*) and tests
+├── tests/                  # unit tests for the replay load
 ├── docs/adr/               # architecture decision records
 ├── images/                 # Dashboard screenshots
 ├── .github/                # CI: dbt build from raw files, Windows, security audit, app health
@@ -169,7 +198,8 @@ pip install -r requirements-dbt.txt
 **3. Load the data into DuckDB**
 
 ```bash
-python load_data.py
+python load_data.py                     # the full extract
+# python load_data.py --as-of 2017-06-30 # the data as known at the end of that day (replay)
 ```
 
 **4. Build the dimensional model and run every test.** The connection profile is `olist_dbt/profiles.yml`, so no `~/.dbt` setup is needed.
@@ -177,6 +207,7 @@ python load_data.py
 ```bash
 cd olist_dbt
 dbt build
+dbt source freshness                  # optional: fails if the last load is over 50 hours old
 dbt docs generate && dbt docs serve   # optional: lineage graph and column docs
 cd ..
 ```
@@ -192,7 +223,7 @@ The dashboard only needs step 1 (with `requirements.txt`) and the committed `dat
 
 ## Automated checks
 
-- **dbt check** (`dbt-check.yml`) runs on every change to the models, scripts or export. It downloads and verifies the nine CSV files, loads them, runs `dbt build` (15 models and 47 tests), rebuilds the exports and the Power BI project and fails if any differs from the committed one, renders the dashboard, and builds the dbt documentation (downloadable from each run).
+- **dbt check** (`dbt-check.yml`) runs on every change to the models, scripts or export. It downloads and verifies the nine CSV files, loads them, runs `dbt build` (15 models and 48 tests), checks source freshness on that load and its failure on a three-day-old one, replays the feed to prove the incremental models equal a full rebuild, rebuilds the exports and the Power BI project and fails if any differs from the committed one, renders the dashboard, and builds the dbt documentation (downloadable from each run).
 - **Windows check** (`windows-check.yml`) installs and smoke-tests the project on Windows.
 - **Security audit** (`security-audit.yml`) audits every `requirements*.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
 - **App health** (`app-health.yml`) opens the [live app](https://diegotddd-olist-analytics.streamlit.app) in a real browser after each push and once a day (waking it if it was asleep) and fails if the app shows an error.

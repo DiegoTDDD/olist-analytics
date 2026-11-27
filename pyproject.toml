@@ -21,3 +21,8 @@ ignore = ["E402", "ANN401"]
 "powerbi/**" = ["ANN", "T20", "E501"]  # generator of the Power BI project
 "dashboard.py" = ["ANN", "T20", "E501"]
 "olist_dbt/models/staging/dashboard.py" = ["ANN"]
+"tests/**" = ["ANN", "E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

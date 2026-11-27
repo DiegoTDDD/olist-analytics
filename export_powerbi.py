@@ -30,11 +30,17 @@ TABLES = {
 }
 
 
+# Columns the pipeline needs but the report does not: the incremental models' watermark.
+INTERNAL = {"source_updated_at"}
+
+
 def select(con: duckdb.DuckDBPyConnection, table: str) -> str:
     """SELECT with money as DOUBLE: Power BI reads Parquet DECIMAL(38, x) as text, and the report
     stores money as a fixed-decimal type anyway."""
     cols = []
     for name, dtype, *_ in con.execute(f"DESCRIBE {table}").fetchall():
+        if name in INTERNAL:
+            continue
         money = dtype.startswith("DECIMAL")
         cols.append(f'CAST("{name}" AS DOUBLE) AS "{name}"' if money else f'"{name}"')
     return f"SELECT {', '.join(cols)} FROM {table}"

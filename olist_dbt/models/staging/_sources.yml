@@ -3,10 +3,16 @@ version: 2
 sources:
   - name: olist
     description: >
-      The nine raw tables of the Brazilian E-Commerce Public Dataset by Olist (Kaggle), loaded as is
-      by load_data.py. A fixed historical snapshot (2016-2018): it is never refreshed, so source
-      freshness checks do not apply (see docs/adr/0004).
+      The nine raw tables of the Brazilian E-Commerce Public Dataset by Olist (Kaggle), loaded by
+      load_data.py, in full or as known at the end of a given day (a replay of the feed, see
+      docs/adr/0006). Every table carries _loaded_at, the time of the load.
     schema: main
+    config:
+      loaded_at_field: _loaded_at
+      # A daily feed may miss one run: warn after a day, fail after two.
+      freshness:
+        warn_after: {count: 26, period: hour}
+        error_after: {count: 50, period: hour}
     tables:
       - name: orders
         columns:
